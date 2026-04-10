@@ -2,6 +2,7 @@
   "expo": {
     "name": "HealthcareApp-Android",
     "slug": "HealthcareApp-Android",
+    "scheme": "healthcareapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
