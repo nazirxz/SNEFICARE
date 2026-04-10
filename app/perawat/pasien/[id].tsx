@@ -19,6 +19,13 @@ function ApprovalCard({ session, onApprove }: {
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const def = sessions.find((s) => s.day === session.day);
+  const reflectionText =
+    typeof session?.reflection === "string" && session.reflection.trim()
+      ? session.reflection.trim()
+      : Object.values(session?.refleksiAnswers ?? {})
+          .map((v) => String(v).trim())
+          .filter((v) => v.length > 0)
+          .join("\n");
 
   if (submitted) {
     return (
@@ -57,10 +64,10 @@ function ApprovalCard({ session, onApprove }: {
       {/* Expanded */}
       {expanded && (
         <View style={{ padding: 14, gap: 12 }}>
-          {session.reflection ? (
+          {reflectionText ? (
             <View style={{ backgroundColor: "#F8F5FF", borderRadius: 12, padding: 12 }}>
               <Text style={{ fontSize: 11, fontWeight: "600", color: "#9B9BAE", marginBottom: 4 }}>Refleksi pasien:</Text>
-              <Text style={{ fontSize: 13, color: "#4A4A6A", lineHeight: 20, fontStyle: "italic" }}>"{session.reflection}"</Text>
+              <Text style={{ fontSize: 13, color: "#4A4A6A", lineHeight: 20, fontStyle: "italic" }}>"{reflectionText}"</Text>
             </View>
           ) : null}
 

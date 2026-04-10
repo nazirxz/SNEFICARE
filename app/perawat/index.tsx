@@ -2,7 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar, Alert } from "reac
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
-import { patients, sessions } from "../../src/data/mockData";
+import { sessions } from "../../src/data/mockData";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MOODS = ["😢", "😟", "😐", "🙂", "😊"];
@@ -22,7 +22,8 @@ function AdherenceBar({ pct }: { pct: number }) {
 export default function NurseDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getPatientSessions, getPendingApprovals, logout } = useApp();
+  const { getAllPatients, getPatientSessions, getPendingApprovals, logout } = useApp();
+  const patients = getAllPatients();
 
   const patientStats = patients.map((p) => {
     const sess = getPatientSessions(p.id);
@@ -36,7 +37,10 @@ export default function NurseDashboard() {
   });
 
   const totalCompleted = patientStats.reduce((a, p) => a + p.completed, 0);
-  const avgAdherence = Math.round(patientStats.reduce((a, p) => a + p.adherence, 0) / patientStats.length);
+  const avgAdherence =
+    patientStats.length > 0
+      ? Math.round(patientStats.reduce((a, p) => a + p.adherence, 0) / patientStats.length)
+      : 0;
   const todayActive = patientStats.filter((p) => p.todayDone).length;
   const pendingApprovals = getPendingApprovals();
   const totalPending = pendingApprovals.length;

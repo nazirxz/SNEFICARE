@@ -42,20 +42,6 @@ export default function Login() {
     }
   };
 
-  const demoAccounts =
-    selectedRole === "pasien"
-      ? [
-          { label: "Demo Pre — hari 1", username: "demo.pasien", password: "demo123" },
-          { label: "Demo Post — 15 hari selesai", username: "demo.post", password: "post123" },
-          { label: "Siti Rahayu", username: "siti.rahayu", password: "siti123" },
-          { label: "Nur Indah", username: "nur.indah", password: "nur123" },
-          { label: "Dewi Lestari", username: "dewi.lestari", password: "dewi123" },
-        ]
-      : [
-          { label: "Ns. Kartini", username: "ns.kartini", password: "kartini123" },
-          { label: "Ns. Budi", username: "ns.budi", password: "budi123" },
-        ];
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -312,7 +298,6 @@ export default function Login() {
               </TouchableOpacity>
             </View>
 
-            {/* Demo Accounts */}
             <View
               style={{
                 backgroundColor: "rgba(255,255,255,0.6)",
@@ -323,27 +308,9 @@ export default function Login() {
                 borderStyle: "dashed",
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#9B9BAE", marginBottom: 8 }}>
-                Akun Demo:
+              <Text style={{ fontSize: 12, color: "#6B6B80", lineHeight: 18 }}>
+                Gunakan akun yang sudah terdaftar di database Supabase oleh perawat/admin.
               </Text>
-              {demoAccounts.map((acc) => (
-                <TouchableOpacity
-                  key={acc.username}
-                  onPress={() => { setUsername(acc.username); setPassword(acc.password); }}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.8)",
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, color: "#6B6B80" }}>
-                    <Text style={{ fontWeight: "600", color: "#4A4A6A" }}>{acc.label}</Text>
-                    {" — "}{acc.username} / {acc.password}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
         )}
