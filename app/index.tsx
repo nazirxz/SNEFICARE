@@ -32,7 +32,7 @@ export default function Login() {
     setIsLoading(true);
     setError("");
     await new Promise((r) => setTimeout(r, 800));
-    const result = login(username, password);
+    const result = await login(username, password);
     if (result.success) {
       if (result.role === "pasien") router.replace("/(pasien)");
       else router.replace("/(perawat)");

@@ -21,7 +21,7 @@ export default function PatientProfile() {
   const handleLogout = () => {
     Alert.alert("Keluar", "Apakah kamu yakin ingin keluar?", [
       { text: "Batal", style: "cancel" },
-      { text: "Keluar", style: "destructive", onPress: () => { logout(); router.replace("/"); } },
+      { text: "Keluar", style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
     ]);
   };
 

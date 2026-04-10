@@ -46,7 +46,7 @@ export default function NurseDashboard() {
   const handleLogout = () => {
     Alert.alert("Keluar", "Apakah kamu yakin ingin keluar?", [
       { text: "Batal", style: "cancel" },
-      { text: "Keluar", style: "destructive", onPress: () => { logout(); router.replace("/"); } },
+      { text: "Keluar", style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
     ]);
   };
 
@@ -66,6 +66,32 @@ export default function NurseDashboard() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 20 }}>
+          {/* Tambah Pasien */}
+          <TouchableOpacity
+            onPress={() => router.push("/(perawat)/tambah-pasien")}
+            style={{
+              backgroundColor: "#8B7EC4",
+              borderRadius: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              shadowColor: "#8B7EC4",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="person-add" size={20} color="white" />
+            <Text style={{ color: "white", fontSize: 15, fontWeight: "700" }}>
+              Daftarkan Pasien Baru
+            </Text>
+          </TouchableOpacity>
+
           {/* Stats grid */}
           <View>
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E", marginBottom: 12 }}>Ringkasan Hari Ini</Text>
