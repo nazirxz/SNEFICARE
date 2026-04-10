@@ -68,7 +68,7 @@ export default function NurseDashboard() {
         <View style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 20 }}>
           {/* Tambah Pasien */}
           <TouchableOpacity
-            onPress={() => router.push("/(perawat)/tambah-pasien")}
+            onPress={() => router.push("/perawat/tambah-pasien")}
             style={{
               backgroundColor: "#8B7EC4",
               borderRadius: 16,
@@ -133,7 +133,7 @@ export default function NurseDashboard() {
                 return (
                   <TouchableOpacity
                     key={`${patient.id}-${session.day}`}
-                    onPress={() => router.push(`/(perawat)/pasien/${patient.id}` as any)}
+                    onPress={() => router.push(`/perawat/pasien/${patient.id}` as any)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#FAF8FF" }}
                     activeOpacity={0.8}
                   >
@@ -170,7 +170,7 @@ export default function NurseDashboard() {
               {patientStats.map((p) => (
                 <TouchableOpacity
                   key={p.id}
-                  onPress={() => router.push(`/(perawat)/pasien/${p.id}` as any)}
+                  onPress={() => router.push(`/perawat/pasien/${p.id}` as any)}
                   style={{
                     backgroundColor: "white",
                     borderRadius: 20,

@@ -47,7 +47,7 @@ export default function PatientResearchQuestionnaire() {
   const [step, setStep] = useState<"demo" | "questions">("demo");
 
   if (!patient || !phase) {
-    router.replace("/(pasien)");
+    router.replace("/pasien");
     return null;
   }
 
@@ -55,8 +55,8 @@ export default function PatientResearchQuestionnaire() {
   const bundle = getQuestionnaireBundle(patient.id);
   const programComplete = isProgramInterventionComplete(allSessions);
 
-  if (phase === "pre" && bundle.pre) { router.replace("/(pasien)"); return null; }
-  if (phase === "post" && (!bundle.pre || !programComplete || bundle.post)) { router.replace("/(pasien)"); return null; }
+  if (phase === "pre" && bundle.pre) { router.replace("/pasien"); return null; }
+  if (phase === "post" && (!bundle.pre || !programComplete || bundle.post)) { router.replace("/pasien"); return null; }
 
   const title = phase === "pre" ? "Kuesioner Pra (Pre-test)" : "Kuesioner Pasca (Post-test)";
 
@@ -81,7 +81,7 @@ export default function PatientResearchQuestionnaire() {
       submittedAt: new Date().toISOString(),
     });
     Alert.alert("Terima Kasih!", "Kuesioner berhasil disimpan.", [
-      { text: "OK", onPress: () => router.replace("/(pasien)") },
+      { text: "OK", onPress: () => router.replace("/pasien") },
     ]);
   };
 

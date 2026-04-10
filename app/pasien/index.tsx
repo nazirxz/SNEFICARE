@@ -129,7 +129,7 @@ export default function PatientDashboard() {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => router.push("/(pasien)/kuesioner/pre" as any)}
+                onPress={() => router.push("/pasien/kuesioner/pre" as any)}
                 style={{ backgroundColor: "#C49A40", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
               >
                 <Text style={{ color: "white", fontWeight: "700" }}>Isi kuesioner pra →</Text>
@@ -150,7 +150,7 @@ export default function PatientDashboard() {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => router.push("/(pasien)/kuesioner/post" as any)}
+                onPress={() => router.push("/pasien/kuesioner/post" as any)}
                 style={{ backgroundColor: "#6BAF8F", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
               >
                 <Text style={{ color: "white", fontWeight: "700" }}>Isi kuesioner pasca →</Text>
@@ -284,7 +284,7 @@ export default function PatientDashboard() {
                         </View>
                       </View>
                       <TouchableOpacity
-                        onPress={() => router.push(`/(pasien)/sesi/${todayDay}` as any)}
+                        onPress={() => router.push(`/pasien/sesi/${todayDay}` as any)}
                         style={{ backgroundColor: todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
                       >
                         <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>Ulangi Sesi Hari Ini →</Text>
@@ -293,7 +293,7 @@ export default function PatientDashboard() {
                   )}
                   {!isTodayCompleted && (
                     <TouchableOpacity
-                      onPress={() => router.push(needsPreTest ? "/(pasien)/kuesioner/pre" : `/(pasien)/sesi/${todayDay}` as any)}
+                      onPress={() => router.push(needsPreTest ? "/pasien/kuesioner/pre" : `/pasien/sesi/${todayDay}` as any)}
                       style={{ backgroundColor: todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
                       activeOpacity={0.8}
                     >
@@ -311,7 +311,7 @@ export default function PatientDashboard() {
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E" }}>Sesi Berikutnya</Text>
-              <TouchableOpacity onPress={() => router.push("/(pasien)/kemajuan" as any)}>
+              <TouchableOpacity onPress={() => router.push("/pasien/kemajuan" as any)}>
                 <Text style={{ fontSize: 13, color: "#C96B8A", fontWeight: "600" }}>Lihat semua</Text>
               </TouchableOpacity>
             </View>

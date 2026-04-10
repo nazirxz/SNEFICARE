@@ -177,7 +177,7 @@ export default function PatientSession() {
           Sesi hari {day} berhasil diselesaikan. Perawatmu akan meninjau progresmu.
         </Text>
         <TouchableOpacity
-          onPress={() => router.replace("/(pasien)")}
+          onPress={() => router.replace("/pasien")}
           style={{ backgroundColor: "#C96B8A", borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32, marginTop: 24 }}
           activeOpacity={0.8}
         >

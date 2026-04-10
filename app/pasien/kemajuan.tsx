@@ -115,7 +115,7 @@ export default function PatientProgress() {
                 return (
                   <TouchableOpacity
                     key={s.day}
-                    onPress={() => !isLocked && router.push(`/(pasien)/sesi/${s.day}` as any)}
+                    onPress={() => !isLocked && router.push(`/pasien/sesi/${s.day}` as any)}
                     activeOpacity={isLocked ? 1 : 0.8}
                     style={{
                       backgroundColor: "white",

@@ -63,7 +63,7 @@ export default function PatientProfile() {
           {/* Post-test CTA */}
           {canPostTest && (
             <TouchableOpacity
-              onPress={() => router.push("/(pasien)/kuesioner/post" as any)}
+              onPress={() => router.push("/pasien/kuesioner/post" as any)}
               style={{ backgroundColor: "#6BAF8F", borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}
               activeOpacity={0.8}
             >

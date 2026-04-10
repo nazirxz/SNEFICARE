@@ -34,8 +34,8 @@ export default function Login() {
     await new Promise((r) => setTimeout(r, 800));
     const result = await login(username, password);
     if (result.success) {
-      if (result.role === "pasien") router.replace("/(pasien)");
-      else router.replace("/(perawat)");
+      if (result.role === "pasien") router.replace("/pasien");
+      else router.replace("/perawat");
     } else {
       setError("Username atau kata sandi tidak sesuai. Silakan coba lagi.");
       setIsLoading(false);

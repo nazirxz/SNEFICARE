@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "seed": "tsx supabase/seed.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -36,6 +37,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "dotenv": "^17.4.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   },
   "private": true
