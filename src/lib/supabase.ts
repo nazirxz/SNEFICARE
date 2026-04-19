@@ -13,3 +13,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+// Client terpisah tanpa persistensi — dipakai saat perawat registrasi pasien
+// supaya session perawat di client utama tidak ikut berubah saat `signUp`.
+export function createEphemeralAuthClient() {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
+}

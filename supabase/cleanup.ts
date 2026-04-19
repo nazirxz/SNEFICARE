@@ -16,7 +16,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const KEEP_NURSE_EMAIL = "ns.kartini@sneficare.internal";
+const KEEP_NURSE_EMAIL = "ns.kartini@sneficare.app";
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error("❌  Env SUPABASE_URL atau SERVICE_ROLE_KEY tidak ditemukan di .env");
@@ -77,7 +77,7 @@ async function main() {
   // 5. Hapus auth user yang bukan nurse yang disisakan
   console.log("── Hapus auth users sneficare (kecuali perawat yang disisakan)");
   const sneficareUsers = allUsers.filter((u) =>
-    u.email.toLowerCase().endsWith("@sneficare.internal")
+    u.email.toLowerCase().endsWith("@sneficare.app")
   );
   let deleted = 0;
   for (const u of sneficareUsers) {

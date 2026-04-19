@@ -301,7 +301,7 @@ async function seed() {
   const nurseIdMap: Record<string, string> = {}; // mockId → supabase UUID
 
   for (const nurse of nurses) {
-    const email = `${nurse.username}@sneficare.internal`;
+    const email = `${nurse.username}@sneficare.app`;
     try {
       const { user, reused } = await getOrCreateAuthUser(email, nurse.password, {
         role: "perawat",
@@ -334,7 +334,7 @@ async function seed() {
   log("\n── Pasien ───────────────────────────────────────────────");
 
   for (const patient of patients) {
-    const email = `${patient.username}@sneficare.internal`;
+    const email = `${patient.username}@sneficare.app`;
     const isDemoPost = patient.id === DEMO_POST_TEST_PATIENT_ID;
 
     try {
@@ -464,8 +464,8 @@ async function seed() {
   }
   log(`\n   ${nurses.length} perawat, ${patients.length} pasien, beserta sesi & kuesioner`);
   log(`\n   Login demo akun:`);
-  log(`   Perawat  →  ns.kartini@sneficare.internal  /  kartini123`);
-  log(`   Pasien   →  demo.pasien@sneficare.internal  /  demo123\n`);
+  log(`   Perawat  →  ns.kartini@sneficare.app  /  kartini123`);
+  log(`   Pasien   →  demo.pasien@sneficare.app  /  demo123\n`);
 }
 
 seed().catch((err) => {

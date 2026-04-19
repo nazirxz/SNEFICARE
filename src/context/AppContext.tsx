@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, createEphemeralAuthClient } from "../lib/supabase";
 import type { PatientQuestionnaireBundle, QuestionnaireSubmission } from "../data/researchQuestionnaire";
 import type { Patient, Nurse, SessionDefinition, SessionRecord, RelaxationTrack } from "../types/domain";
 
@@ -361,7 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [loadFromSession]);
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; role?: UserRole }> => {
-    const email = `${username.trim()}@sneficare.internal`;
+    const email = `${username.trim()}@sneficare.app`;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { success: false };
 
@@ -403,8 +403,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nurseId = nurseSession?.user?.id;
     if (!nurseSession || !nurseId) return { success: false, error: "Sesi perawat tidak ditemukan" };
 
-    const email = `${data.username.trim()}@sneficare.internal`;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const email = `${data.username.trim()}@sneficare.app`;
+
+    // Pakai client ephemeral (no persist) supaya session perawat di `supabase`
+    // utama tidak ikut berganti jadi pasien baru saat signUp dipanggil.
+    const ephemeral = createEphemeralAuthClient();
+    const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
       email,
       password: data.password,
       options: { data: { role: "pasien", name: data.name.trim() } },
@@ -413,11 +417,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (signUpError || !signUpData.user) return { success: false, error: signUpError?.message ?? "Gagal membuat akun" };
 
     const patientUserId = signUpData.user.id;
-
-    await supabase.auth.setSession({
-      access_token: nurseSession.access_token,
-      refresh_token: nurseSession.refresh_token,
-    });
 
     const { error: patientError } = await supabase.from("patients").insert({
       id: patientUserId,
