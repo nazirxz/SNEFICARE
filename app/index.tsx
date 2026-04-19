@@ -23,17 +23,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useApp();
   const router = useRouter();
-  const demoAccounts =
-    selectedRole === "pasien"
-      ? [
-          { label: "Demo Pre", username: "demo.pasien", password: "demo123" },
-          { label: "Demo Post", username: "demo.post", password: "post123" },
-          { label: "Siti", username: "siti.rahayu", password: "siti123" },
-        ]
-      : [
-          { label: "Ns. Kartini", username: "ns.kartini", password: "kartini123" },
-          { label: "Ns. Budi", username: "ns.budi", password: "budi123" },
-        ];
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -307,45 +296,6 @@ export default function Login() {
                   <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>Masuk</Text>
                 )}
               </TouchableOpacity>
-            </View>
-
-            <View
-              style={{
-                backgroundColor: "rgba(255,255,255,0.6)",
-                borderRadius: 20,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: "#D0C8E0",
-                borderStyle: "dashed",
-              }}
-            >
-              <Text style={{ fontSize: 12, color: "#6B6B80", lineHeight: 18 }}>
-                Quick login demo (tetap login ke database):
-              </Text>
-              <View style={{ marginTop: 10, gap: 6 }}>
-                {demoAccounts.map((acc) => (
-                  <TouchableOpacity
-                    key={acc.username}
-                    onPress={() => {
-                      setUsername(acc.username);
-                      setPassword(acc.password);
-                      setError("");
-                    }}
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.85)",
-                      borderRadius: 10,
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 12, color: "#4A4A6A" }}>
-                      <Text style={{ fontWeight: "700" }}>{acc.label}</Text>
-                      {" — "}{acc.username} / {acc.password}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
           </View>
         )}

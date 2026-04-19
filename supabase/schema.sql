@@ -204,6 +204,33 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- -------------------------------------------------------------
+-- HELPER FUNCTIONS (dipakai RLS policy agar tidak rekursif)
+-- SECURITY DEFINER = bypass RLS saat cek role, mencegah infinite loop
+-- -------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_nurse(user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.nurses WHERE id = user_id);
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_assigned_nurse(user_id UUID, nurse_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.patients
+    WHERE id = user_id AND nurse_id = nurse_user_id
+  );
+$$;
+
+-- -------------------------------------------------------------
 -- ROW LEVEL SECURITY
 -- -------------------------------------------------------------
 ALTER TABLE public.profiles               ENABLE ROW LEVEL SECURITY;
@@ -227,7 +254,7 @@ CREATE POLICY "profiles: self update"
 DROP POLICY IF EXISTS "profiles: nurse read all" ON public.profiles;
 CREATE POLICY "profiles: nurse read all"
   ON public.profiles FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 
 -- Nurses
 DROP POLICY IF EXISTS "nurses: self read" ON public.nurses;
@@ -236,10 +263,7 @@ CREATE POLICY "nurses: self read"
 DROP POLICY IF EXISTS "nurses: patient reads assigned" ON public.nurses;
 CREATE POLICY "nurses: patient reads assigned"
   ON public.nurses FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.patients p
-    WHERE p.id = auth.uid() AND p.nurse_id = nurses.id
-  ));
+  USING (public.is_assigned_nurse(auth.uid(), nurses.id));
 
 -- Patients
 DROP POLICY IF EXISTS "patients: self" ON public.patients;
@@ -248,15 +272,15 @@ CREATE POLICY "patients: self"
 DROP POLICY IF EXISTS "patients: nurse read all" ON public.patients;
 CREATE POLICY "patients: nurse read all"
   ON public.patients FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 DROP POLICY IF EXISTS "patients: nurse insert" ON public.patients;
 CREATE POLICY "patients: nurse insert"
   ON public.patients FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  WITH CHECK (public.is_nurse(auth.uid()));
 DROP POLICY IF EXISTS "patients: nurse update" ON public.patients;
 CREATE POLICY "patients: nurse update"
   ON public.patients FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 
 -- Session Records
 DROP POLICY IF EXISTS "session_records: patient self" ON public.session_records;
@@ -265,11 +289,11 @@ CREATE POLICY "session_records: patient self"
 DROP POLICY IF EXISTS "session_records: nurse read all" ON public.session_records;
 CREATE POLICY "session_records: nurse read all"
   ON public.session_records FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 DROP POLICY IF EXISTS "session_records: nurse approve" ON public.session_records;
 CREATE POLICY "session_records: nurse approve"
   ON public.session_records FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 
 -- Reflection Answers
 DROP POLICY IF EXISTS "reflection_answers: patient self" ON public.reflection_answers;
@@ -282,7 +306,7 @@ CREATE POLICY "reflection_answers: patient self"
 DROP POLICY IF EXISTS "reflection_answers: nurse read" ON public.reflection_answers;
 CREATE POLICY "reflection_answers: nurse read"
   ON public.reflection_answers FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 
 -- Questionnaire Submissions
 DROP POLICY IF EXISTS "questionnaire: patient self" ON public.questionnaire_submissions;
@@ -291,7 +315,7 @@ CREATE POLICY "questionnaire: patient self"
 DROP POLICY IF EXISTS "questionnaire: nurse read all" ON public.questionnaire_submissions;
 CREATE POLICY "questionnaire: nurse read all"
   ON public.questionnaire_submissions FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+  USING (public.is_nurse(auth.uid()));
 
 -- Program sessions (read-only for authenticated users)
 DROP POLICY IF EXISTS "program_sessions: authenticated read" ON public.program_sessions;
