@@ -2,7 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, StatusBar } from "reac
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
-import type { Patient } from "../../src/data/mockData";
+import type { Patient } from "../../src/types/domain";
 import { PROGRAM_CONTACT } from "../../src/data/programContact";
 import { isProgramInterventionComplete } from "../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

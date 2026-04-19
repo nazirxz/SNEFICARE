@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Alert }
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../../src/context/AppContext";
-import type { Patient } from "../../../src/data/mockData";
+import type { Patient } from "../../../src/types/domain";
 import {
   SMSES_BC_ITEM_COUNT,
   createEmptyScoreState,
@@ -12,7 +12,6 @@ import {
   type QuestionnaireDemographics,
   type QuestionnairePhase,
 } from "../../../src/data/researchQuestionnaire";
-import { SMSES_BC_QUESTIONS } from "../../../src/data/smssesBcQuestions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SCORE_OPTIONS = [
@@ -38,8 +37,9 @@ export default function PatientResearchQuestionnaire() {
   const { fase } = useLocalSearchParams<{ fase: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { currentUser, getPatientSessions, getQuestionnaireBundle, saveQuestionnaireSubmission } = useApp();
+  const { currentUser, getPatientSessions, getQuestionnaireBundle, saveQuestionnaireSubmission, getQuestionnaireQuestions } = useApp();
   const patient = currentUser as Patient;
+  const questions = getQuestionnaireQuestions();
 
   const phase: QuestionnairePhase | null = fase === "pre" || fase === "post" ? fase : null;
   const [demographics, setDemographics] = useState<QuestionnaireDemographics>(emptyDemo);
@@ -158,7 +158,7 @@ export default function PatientResearchQuestionnaire() {
               </Text>
             </View>
 
-            {SMSES_BC_QUESTIONS.map((q, i) => (
+            {questions.map((q, i) => (
               <View key={i} style={{ backgroundColor: "white", borderRadius: 16, padding: 16, gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: scores[i] ? "#C49A40" : "#F0E8E0", alignItems: "center", justifyContent: "center" }}>

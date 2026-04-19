@@ -2,7 +2,6 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar, Alert } from "reac
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
-import { sessions } from "../../src/data/mockData";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MOODS = ["😢", "😟", "😐", "🙂", "😊"];
@@ -22,8 +21,9 @@ function AdherenceBar({ pct }: { pct: number }) {
 export default function NurseDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getAllPatients, getPatientSessions, getPendingApprovals, logout } = useApp();
+  const { getAllPatients, getPatientSessions, getPendingApprovals, logout, getProgramSessions } = useApp();
   const patients = getAllPatients();
+  const sessions = getProgramSessions();
 
   const patientStats = patients.map((p) => {
     const sess = getPatientSessions(p.id);

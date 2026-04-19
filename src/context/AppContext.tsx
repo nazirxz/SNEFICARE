@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
-import type { Patient, Nurse, SessionRecord } from "../data/mockData";
 import type { PatientQuestionnaireBundle, QuestionnaireSubmission } from "../data/researchQuestionnaire";
+import type { Patient, Nurse, SessionDefinition, SessionRecord, RelaxationTrack } from "../types/domain";
 
 export type UserRole = "pasien" | "perawat";
 
@@ -35,8 +35,11 @@ interface AppContextType {
   getPendingApprovals: () => PendingApproval[];
   getAllPatients: () => Patient[];
   getPatientById: (id: string) => Patient | undefined;
+  getProgramSessions: () => SessionDefinition[];
+  getQuestionnaireQuestions: () => string[];
   getQuestionnaireBundle: (patientId: string) => PatientQuestionnaireBundle;
   saveQuestionnaireSubmission: (patientId: string, submission: QuestionnaireSubmission) => void;
+  getRelaxationTracks: () => RelaxationTrack[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,6 +51,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [patientsState, setPatientsState] = useState<Patient[]>([]);
   const [sessionsByPatient, setSessionsByPatient] = useState<Record<string, SessionRecord[]>>({});
   const [questionnairesByPatient, setQuestionnairesByPatient] = useState<Record<string, PatientQuestionnaireBundle>>({});
+  const [programSessions, setProgramSessions] = useState<SessionDefinition[]>([]);
+  const [questionnaireQuestions, setQuestionnaireQuestions] = useState<string[]>([]);
+  const [relaxationTracks, setRelaxationTracks] = useState<RelaxationTrack[]>([]);
 
   const mapPatientRow = useCallback((row: any, profileName: string): Patient => {
     return {
@@ -74,6 +80,91 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       username,
       password: "",
     };
+  }, []);
+
+  const fetchProgramContent = useCallback(async () => {
+    const { data: sessionRows, error: sessionError } = await supabase
+      .from("program_sessions")
+      .select("*")
+      .order("day", { ascending: true });
+    if (sessionError) throw new Error(`Gagal mengambil program_sessions: ${sessionError.message}`);
+
+    const { data: reflectionRows, error: reflectionError } = await supabase
+      .from("program_reflection_questions")
+      .select("*")
+      .order("day", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (reflectionError) {
+      throw new Error(`Gagal mengambil program_reflection_questions: ${reflectionError.message}`);
+    }
+
+    const reflectionMap: Record<number, { id: string; label: string; placeholder: string }[]> = {};
+    (reflectionRows ?? []).forEach((q: any) => {
+      if (!reflectionMap[q.day]) reflectionMap[q.day] = [];
+      reflectionMap[q.day].push({
+        id: q.question_id,
+        label: q.label,
+        placeholder: q.placeholder ?? "",
+      });
+    });
+
+    const mapped: SessionDefinition[] = (sessionRows ?? []).map((s: any) => ({
+      day: s.day,
+      title: s.title,
+      theme: s.theme,
+      colorFrom: s.color_from,
+      colorTo: s.color_to,
+      edukasi: {
+        title: s.edukasi_title,
+        content: s.edukasi_content ?? [],
+        keyPoints: s.edukasi_key_points ?? [],
+      },
+      musik: {
+        title: s.musik_title,
+        description: s.musik_description ?? "",
+        duration: s.musik_duration ?? 300,
+        musicType: s.musik_type ?? "Relaksasi",
+      },
+      afirmasi: {
+        title: s.afirmasi_title,
+        mainText: s.afirmasi_main_text ?? "",
+        supportText: s.afirmasi_support_text ?? "",
+        instructions: s.afirmasi_instructions ?? "",
+        positivePhrases: s.afirmasi_positive_phrases ?? undefined,
+      },
+      refleksi: {
+        title: s.refleksi_title ?? "Refleksi Hari Ini",
+        questions: reflectionMap[s.day] ?? [],
+      },
+    }));
+    setProgramSessions(mapped);
+
+    const { data: questionRows, error: questionError } = await supabase
+      .from("questionnaire_questions")
+      .select("prompt")
+      .eq("is_active", true)
+      .order("item_no", { ascending: true });
+    if (questionError) throw new Error(`Gagal mengambil questionnaire_questions: ${questionError.message}`);
+    setQuestionnaireQuestions((questionRows ?? []).map((q: any) => q.prompt));
+
+    const { data: trackRows, error: trackError } = await supabase
+      .from("relaxation_tracks")
+      .select("*")
+      .eq("is_active", true)
+      .order("category", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (trackError) throw new Error(`Gagal mengambil relaxation_tracks: ${trackError.message}`);
+    setRelaxationTracks((trackRows ?? []).map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description ?? "",
+      category: r.category,
+      audioUrl: r.audio_url,
+      durationSec: r.duration_sec ?? 300,
+      thumbnailUrl: r.thumbnail_url ?? undefined,
+      license: r.license ?? undefined,
+      sortOrder: r.sort_order ?? 0,
+    })));
   }, []);
 
   const fetchSessionsMap = useCallback(async (patientIds: string[]) => {
@@ -237,6 +328,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadFromSession = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
+    await fetchProgramContent();
 
     const userId = session.user.id;
     const username = (session.user.email ?? "").split("@")[0];
@@ -254,7 +346,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (role === "perawat") {
       await loadNurseScope(userId, profileName, username);
     }
-  }, [loadNurseScope, loadPatientScope]);
+  }, [fetchProgramContent, loadNurseScope, loadPatientScope]);
 
   useEffect(() => {
     (async () => {
@@ -282,6 +374,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const role = profile.role as UserRole;
     const profileName = profile.name ?? "";
+    await fetchProgramContent();
     if (role === "pasien") {
       await loadPatientScope(data.user.id, profileName, profile);
       return { success: true, role: "pasien" };
@@ -291,7 +384,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: true, role: "perawat" };
     }
     return { success: false };
-  }, [loadNurseScope, loadPatientScope]);
+  }, [fetchProgramContent, loadNurseScope, loadPatientScope]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
@@ -300,6 +393,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPatientsState([]);
     setSessionsByPatient({});
     setQuestionnairesByPatient({});
+    setProgramSessions([]);
+    setQuestionnaireQuestions([]);
+    setRelaxationTracks([]);
   }, []);
 
   const createPatient = useCallback(async (data: CreatePatientData): Promise<{ success: boolean; error?: string }> => {
@@ -470,8 +566,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return result;
   }, [getPatientSessions, patientsState]);
 
+  const getRelaxationTracks = useCallback(() => relaxationTracks, [relaxationTracks]);
   const getAllPatients = useCallback(() => patientsState, [patientsState]);
   const getPatientById = useCallback((id: string) => patientsState.find((p) => p.id === id), [patientsState]);
+  const getProgramSessions = useCallback(() => programSessions, [programSessions]);
+  const getQuestionnaireQuestions = useCallback(() => questionnaireQuestions, [questionnaireQuestions]);
   const getQuestionnaireBundle = useCallback(
     (patientId: string) => questionnairesByPatient[patientId] ?? {},
     [questionnairesByPatient]
@@ -516,7 +615,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getPatientSessions, completeSession, approveSession,
       getEffectiveCurrentDay, getPendingApprovals,
       getAllPatients, getPatientById,
+      getProgramSessions, getQuestionnaireQuestions,
       getQuestionnaireBundle, saveQuestionnaireSubmission,
+      getRelaxationTracks,
     }}>
       {children}
     </AppContext.Provider>

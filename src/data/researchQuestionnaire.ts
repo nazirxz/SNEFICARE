@@ -1,4 +1,4 @@
-import type { SessionRecord } from "./mockData";
+import type { SessionRecord } from "../types/domain";
 
 export type QuestionnairePhase = "pre" | "post";
 

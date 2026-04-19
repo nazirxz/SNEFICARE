@@ -8,8 +8,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
-import { sessions } from "../../src/data/mockData";
-import type { Patient } from "../../src/data/mockData";
+import type { Patient } from "../../src/types/domain";
 import { PROGRAM_CONTACT } from "../../src/data/programContact";
 import { isProgramInterventionComplete } from "../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,10 +30,11 @@ function getGreeting() {
 }
 
 export default function PatientDashboard() {
-  const { currentUser, getPatientSessions, getEffectiveCurrentDay, getQuestionnaireBundle } = useApp();
+  const { currentUser, getPatientSessions, getEffectiveCurrentDay, getQuestionnaireBundle, getProgramSessions } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const patient = currentUser as Patient;
+  const sessions = getProgramSessions();
   const allSessions = getPatientSessions(patient?.id ?? "");
   const quote = motivationalQuotes[new Date().getDay() % motivationalQuotes.length];
 

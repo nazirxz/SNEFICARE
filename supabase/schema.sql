@@ -8,7 +8,7 @@
 -- Satu baris per user (pasien maupun perawat)
 -- Otomatis dibuat via trigger saat user signup
 -- -------------------------------------------------------------
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role        TEXT NOT NULL CHECK (role IN ('pasien', 'perawat')),
   name        TEXT NOT NULL DEFAULT '',
@@ -20,7 +20,7 @@ CREATE TABLE public.profiles (
 -- TABEL NURSES
 -- Data tambahan khusus perawat
 -- -------------------------------------------------------------
-CREATE TABLE public.nurses (
+CREATE TABLE IF NOT EXISTS public.nurses (
   id          UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
   nip         TEXT UNIQUE,
   department  TEXT,
@@ -32,7 +32,7 @@ CREATE TABLE public.nurses (
 -- TABEL PATIENTS
 -- Data klinis dan program pasien
 -- -------------------------------------------------------------
-CREATE TABLE public.patients (
+CREATE TABLE IF NOT EXISTS public.patients (
   id                UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
   username_display  TEXT NOT NULL UNIQUE,
   age               INTEGER,
@@ -50,7 +50,7 @@ CREATE TABLE public.patients (
 -- TABEL SESSION_RECORDS
 -- Rekaman sesi harian pasien (maks 15 per pasien)
 -- -------------------------------------------------------------
-CREATE TABLE public.session_records (
+CREATE TABLE IF NOT EXISTS public.session_records (
   id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id              UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   day                     INTEGER NOT NULL CHECK (day BETWEEN 1 AND 15),
@@ -76,7 +76,7 @@ CREATE TABLE public.session_records (
 -- TABEL REFLECTION_ANSWERS
 -- Jawaban refleksi per pertanyaan per sesi
 -- -------------------------------------------------------------
-CREATE TABLE public.reflection_answers (
+CREATE TABLE IF NOT EXISTS public.reflection_answers (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id    UUID NOT NULL REFERENCES public.session_records(id) ON DELETE CASCADE,
   question_id   TEXT NOT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE public.reflection_answers (
 -- TABEL QUESTIONNAIRE_SUBMISSIONS
 -- Kuesioner SMSES-BC pre dan post test
 -- -------------------------------------------------------------
-CREATE TABLE public.questionnaire_submissions (
+CREATE TABLE IF NOT EXISTS public.questionnaire_submissions (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id            UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   phase                 TEXT NOT NULL CHECK (phase IN ('pre', 'post')),
@@ -104,6 +104,82 @@ CREATE TABLE public.questionnaire_submissions (
   scores                INTEGER[] NOT NULL,
   submitted_at          TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(patient_id, phase)
+);
+
+-- -------------------------------------------------------------
+-- TABEL PROGRAM_SESSIONS
+-- Master konten 15 sesi program
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.program_sessions (
+  day                       INTEGER PRIMARY KEY CHECK (day BETWEEN 1 AND 15),
+  title                     TEXT NOT NULL,
+  theme                     TEXT NOT NULL,
+  color_from                TEXT NOT NULL,
+  color_to                  TEXT NOT NULL,
+  edukasi_title             TEXT NOT NULL,
+  edukasi_content           TEXT[] NOT NULL DEFAULT '{}',
+  edukasi_key_points        TEXT[] NOT NULL DEFAULT '{}',
+  musik_title               TEXT NOT NULL,
+  musik_description         TEXT NOT NULL DEFAULT '',
+  musik_duration            INTEGER NOT NULL DEFAULT 300,
+  musik_type                TEXT NOT NULL DEFAULT 'Relaksasi',
+  afirmasi_title            TEXT NOT NULL,
+  afirmasi_main_text        TEXT NOT NULL DEFAULT '',
+  afirmasi_support_text     TEXT NOT NULL DEFAULT '',
+  afirmasi_instructions     TEXT NOT NULL DEFAULT '',
+  afirmasi_positive_phrases TEXT[],
+  refleksi_title            TEXT NOT NULL DEFAULT 'Refleksi Hari Ini',
+  created_at                TIMESTAMPTZ DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- -------------------------------------------------------------
+-- TABEL PROGRAM_REFLECTION_QUESTIONS
+-- Master pertanyaan refleksi tiap sesi
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.program_reflection_questions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  day          INTEGER NOT NULL REFERENCES public.program_sessions(day) ON DELETE CASCADE,
+  question_id  TEXT NOT NULL,
+  label        TEXT NOT NULL,
+  placeholder  TEXT NOT NULL DEFAULT '',
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(day, question_id)
+);
+
+-- -------------------------------------------------------------
+-- TABEL QUESTIONNAIRE_QUESTIONS
+-- Master item kuesioner SMSES-BC
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.questionnaire_questions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_no     INTEGER NOT NULL UNIQUE,
+  prompt      TEXT NOT NULL,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- -------------------------------------------------------------
+-- TABEL RELAXATION_TRACKS
+-- Master library suara relaksasi (file distream dari Supabase Storage)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.relaxation_tracks (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title          TEXT NOT NULL,
+  description    TEXT NOT NULL DEFAULT '',
+  category       TEXT NOT NULL CHECK (category IN (
+                   'ombak','hujan','hutan','sungai','air-terjun',
+                   'burung','angin','musik','campuran'
+                 )),
+  audio_url      TEXT NOT NULL,
+  duration_sec   INTEGER NOT NULL DEFAULT 300,
+  thumbnail_url  TEXT,
+  license        TEXT,
+  source_ref     TEXT,
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order     INTEGER NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- -------------------------------------------------------------
@@ -122,7 +198,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
@@ -135,19 +212,28 @@ ALTER TABLE public.patients               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.session_records        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reflection_answers     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.questionnaire_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.program_sessions       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.program_reflection_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.questionnaire_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.relaxation_tracks      ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
+DROP POLICY IF EXISTS "profiles: self read" ON public.profiles;
 CREATE POLICY "profiles: self read"
   ON public.profiles FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "profiles: self update" ON public.profiles;
 CREATE POLICY "profiles: self update"
   ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "profiles: nurse read all" ON public.profiles;
 CREATE POLICY "profiles: nurse read all"
   ON public.profiles FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
 
 -- Nurses
+DROP POLICY IF EXISTS "nurses: self read" ON public.nurses;
 CREATE POLICY "nurses: self read"
   ON public.nurses FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "nurses: patient reads assigned" ON public.nurses;
 CREATE POLICY "nurses: patient reads assigned"
   ON public.nurses FOR SELECT
   USING (EXISTS (
@@ -156,42 +242,74 @@ CREATE POLICY "nurses: patient reads assigned"
   ));
 
 -- Patients
+DROP POLICY IF EXISTS "patients: self" ON public.patients;
 CREATE POLICY "patients: self"
   ON public.patients FOR ALL USING (auth.uid() = id);
+DROP POLICY IF EXISTS "patients: nurse read all" ON public.patients;
 CREATE POLICY "patients: nurse read all"
   ON public.patients FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+DROP POLICY IF EXISTS "patients: nurse insert" ON public.patients;
 CREATE POLICY "patients: nurse insert"
   ON public.patients FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+DROP POLICY IF EXISTS "patients: nurse update" ON public.patients;
 CREATE POLICY "patients: nurse update"
   ON public.patients FOR UPDATE
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
 
 -- Session Records
+DROP POLICY IF EXISTS "session_records: patient self" ON public.session_records;
 CREATE POLICY "session_records: patient self"
   ON public.session_records FOR ALL USING (auth.uid() = patient_id);
+DROP POLICY IF EXISTS "session_records: nurse read all" ON public.session_records;
 CREATE POLICY "session_records: nurse read all"
   ON public.session_records FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+DROP POLICY IF EXISTS "session_records: nurse approve" ON public.session_records;
 CREATE POLICY "session_records: nurse approve"
   ON public.session_records FOR UPDATE
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
 
 -- Reflection Answers
+DROP POLICY IF EXISTS "reflection_answers: patient self" ON public.reflection_answers;
 CREATE POLICY "reflection_answers: patient self"
   ON public.reflection_answers FOR ALL
   USING (EXISTS (
     SELECT 1 FROM public.session_records sr
     WHERE sr.id = session_id AND sr.patient_id = auth.uid()
   ));
+DROP POLICY IF EXISTS "reflection_answers: nurse read" ON public.reflection_answers;
 CREATE POLICY "reflection_answers: nurse read"
   ON public.reflection_answers FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
 
 -- Questionnaire Submissions
+DROP POLICY IF EXISTS "questionnaire: patient self" ON public.questionnaire_submissions;
 CREATE POLICY "questionnaire: patient self"
   ON public.questionnaire_submissions FOR ALL USING (auth.uid() = patient_id);
+DROP POLICY IF EXISTS "questionnaire: nurse read all" ON public.questionnaire_submissions;
 CREATE POLICY "questionnaire: nurse read all"
   ON public.questionnaire_submissions FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.nurses WHERE id = auth.uid()));
+
+-- Program sessions (read-only for authenticated users)
+DROP POLICY IF EXISTS "program_sessions: authenticated read" ON public.program_sessions;
+CREATE POLICY "program_sessions: authenticated read"
+  ON public.program_sessions FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "program_reflection_questions: authenticated read" ON public.program_reflection_questions;
+CREATE POLICY "program_reflection_questions: authenticated read"
+  ON public.program_reflection_questions FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "questionnaire_questions: authenticated read" ON public.questionnaire_questions;
+CREATE POLICY "questionnaire_questions: authenticated read"
+  ON public.questionnaire_questions FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "relaxation_tracks: authenticated read" ON public.relaxation_tracks;
+CREATE POLICY "relaxation_tracks: authenticated read"
+  ON public.relaxation_tracks FOR SELECT
+  USING (auth.uid() IS NOT NULL AND is_active = TRUE);

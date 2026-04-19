@@ -9,7 +9,8 @@
 
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
-import { patients, nurses } from "../src/data/mockData";
+import { patients, nurses, sessions as programSessions } from "../src/data/mockData";
+import { SMSES_BC_QUESTIONS } from "../src/data/smssesBcQuestions";
 import {
   getDemoPostTestPreSeed,
   DEMO_POST_TEST_PATIENT_ID,
@@ -54,6 +55,10 @@ async function assertRequiredTablesExist() {
     "session_records",
     "reflection_answers",
     "questionnaire_submissions",
+    "program_sessions",
+    "program_reflection_questions",
+    "questionnaire_questions",
+    "relaxation_tracks",
   ];
   const missing: string[] = [];
 
@@ -133,6 +138,148 @@ async function ensureProfile(userId: string, role: "pasien" | "perawat", name: s
   }
 }
 
+async function seedProgramContent() {
+  const sessionRows = programSessions.map((s) => ({
+    day: s.day,
+    title: s.title,
+    theme: s.theme,
+    color_from: s.colorFrom,
+    color_to: s.colorTo,
+    edukasi_title: s.edukasi.title,
+    edukasi_content: s.edukasi.content,
+    edukasi_key_points: s.edukasi.keyPoints,
+    musik_title: s.musik.title,
+    musik_description: s.musik.description,
+    musik_duration: s.musik.duration,
+    musik_type: s.musik.musicType,
+    afirmasi_title: s.afirmasi.title,
+    afirmasi_main_text: s.afirmasi.mainText,
+    afirmasi_support_text: s.afirmasi.supportText,
+    afirmasi_instructions: s.afirmasi.instructions,
+    afirmasi_positive_phrases: s.afirmasi.positivePhrases ?? null,
+    refleksi_title: s.refleksi.title,
+  }));
+
+  const { error: programErr } = await supabase
+    .from("program_sessions")
+    .upsert(sessionRows, { onConflict: "day" });
+  if (programErr) throw new Error(`Seed program_sessions gagal: ${programErr.message}`);
+
+  const reflectionRows = programSessions.flatMap((s) =>
+    s.refleksi.questions.map((q, idx) => ({
+      day: s.day,
+      question_id: q.id,
+      label: q.label,
+      placeholder: q.placeholder,
+      sort_order: idx + 1,
+    }))
+  );
+  if (reflectionRows.length > 0) {
+    const { error: reflectionErr } = await supabase
+      .from("program_reflection_questions")
+      .upsert(reflectionRows, { onConflict: "day,question_id" });
+    if (reflectionErr) {
+      throw new Error(`Seed program_reflection_questions gagal: ${reflectionErr.message}`);
+    }
+  }
+
+  const questionnaireRows = SMSES_BC_QUESTIONS.map((prompt, idx) => ({
+    item_no: idx + 1,
+    prompt,
+    is_active: true,
+  }));
+  const { error: questionnaireErr } = await supabase
+    .from("questionnaire_questions")
+    .upsert(questionnaireRows, { onConflict: "item_no" });
+  if (questionnaireErr) {
+    throw new Error(`Seed questionnaire_questions gagal: ${questionnaireErr.message}`);
+  }
+}
+
+// CATATAN: URL di bawah adalah PLACEHOLDER yang menunjuk ke Supabase Storage bucket
+// `relaxation-audio`. Sebelum app bisa memutar, upload file audio berlisensi
+// (YouTube Audio Library / Pixabay / Freesound CC0 / Epidemic Sound) ke bucket
+// dengan path sesuai, lalu set bucket visibility ke `public` (atau gunakan signed
+// URL). Track dengan URL https://soundhelix... adalah sample publik untuk
+// memvalidasi player tanpa upload — ganti dengan audio sesungguhnya.
+const RELAXATION_TRACKS_SEED = [
+  {
+    title: "Ocean Calm",
+    description: "Deburan ombak yang ritmis untuk menenangkan pernapasan.",
+    category: "ombak",
+    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/ombak/ombak-01.mp3",
+    duration_sec: 600,
+    license: "TBD",
+    sort_order: 1,
+  },
+  {
+    title: "Hujan Lembut",
+    description: "Suara hujan pelan di atap — cocok untuk tidur atau meditasi.",
+    category: "hujan",
+    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/hujan/hujan-01.mp3",
+    duration_sec: 600,
+    license: "TBD",
+    sort_order: 1,
+  },
+  {
+    title: "Hutan Pagi",
+    description: "Keheningan hutan diiringi siulan burung ringan.",
+    category: "hutan",
+    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/hutan/hutan-01.mp3",
+    duration_sec: 600,
+    license: "TBD",
+    sort_order: 1,
+  },
+  {
+    title: "Sungai Mengalir",
+    description: "Aliran sungai jernih yang menenangkan.",
+    category: "sungai",
+    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/sungai/sungai-01.mp3",
+    duration_sec: 600,
+    license: "TBD",
+    sort_order: 1,
+  },
+  {
+    title: "Kicau Burung",
+    description: "Kicauan burung di pagi hari.",
+    category: "burung",
+    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/burung/burung-01.mp3",
+    duration_sec: 600,
+    license: "TBD",
+    sort_order: 1,
+  },
+  // Sample publik untuk validasi player tanpa perlu upload dulu
+  {
+    title: "Guided Breathing (Demo)",
+    description: "Musik panduan pernapasan — sample publik untuk demo.",
+    category: "musik",
+    audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    duration_sec: 372,
+    license: "SoundHelix (demo only)",
+    sort_order: 1,
+  },
+];
+
+async function seedRelaxationTracks() {
+  let inserted = 0;
+  let skipped = 0;
+  for (const track of RELAXATION_TRACKS_SEED) {
+    const { data: existing } = await supabase
+      .from("relaxation_tracks")
+      .select("id")
+      .eq("title", track.title)
+      .maybeSingle();
+    if (existing) { skipped += 1; continue; }
+    const { error } = await supabase.from("relaxation_tracks").insert(track);
+    if (error) {
+      warn(`Relaxation track "${track.title}": ${error.message}`);
+    } else {
+      inserted += 1;
+    }
+  }
+  return { inserted, skipped };
+}
+
 // ----------------------------------------------------------------
 // Main
 // ----------------------------------------------------------------
@@ -141,7 +288,15 @@ async function seed() {
   warningCount = 0;
   await assertRequiredTablesExist();
 
-  // ── 1. Seed Perawat ──────────────────────────────────────────
+  // ── 1. Seed Master Konten Program ────────────────────────────
+  log("── Master Konten Program ───────────────────────────────────");
+  await seedProgramContent();
+  log(`  ✅  ${programSessions.length} sesi program + ${SMSES_BC_QUESTIONS.length} item kuesioner`);
+
+  const trackResult = await seedRelaxationTracks();
+  log(`  ✅  Relaxation tracks: ${trackResult.inserted} ditambah, ${trackResult.skipped} sudah ada`);
+
+  // ── 2. Seed Perawat ──────────────────────────────────────────
   log("── Perawat ──────────────────────────────────────────────");
   const nurseIdMap: Record<string, string> = {}; // mockId → supabase UUID
 
@@ -175,7 +330,7 @@ async function seed() {
 
   const firstNurseSupabaseId = Object.values(nurseIdMap)[0];
 
-  // ── 2. Seed Pasien ────────────────────────────────────────────
+  // ── 3. Seed Pasien ────────────────────────────────────────────
   log("\n── Pasien ───────────────────────────────────────────────");
 
   for (const patient of patients) {
@@ -211,7 +366,7 @@ async function seed() {
 
       log(`  ✅  ${patient.name}  (${email})${reused ? " [existing auth]" : ""}`);
 
-      // ── 3. Seed Session Records ──────────────────────────────
+      // ── 4. Seed Session Records ──────────────────────────────
       if (patient.sessions.length > 0) {
         for (const session of patient.sessions) {
           const approvalStatus =
@@ -248,7 +403,7 @@ async function seed() {
             continue;
           }
 
-          // ── 4. Seed Reflection Answers ───────────────────────
+          // ── 5. Seed Reflection Answers ───────────────────────
           if (session.refleksiAnswers && sessionRow) {
             const answers = Object.entries(session.refleksiAnswers)
               .filter(([, text]) => text.trim() !== "")
@@ -269,7 +424,7 @@ async function seed() {
         log(`     📋  ${patient.sessions.length} sesi + refleksi selesai di-seed`);
       }
 
-      // ── 5. Seed Kuesioner demo.post ───────────────────────────
+      // ── 6. Seed Kuesioner demo.post ───────────────────────────
       if (isDemoPost) {
         const preSeed = getDemoPostTestPreSeed();
         const { error: qErr } = await supabase

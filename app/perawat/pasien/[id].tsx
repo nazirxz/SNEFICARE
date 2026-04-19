@@ -3,22 +3,22 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Alert }
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../../src/context/AppContext";
-import { sessions } from "../../../src/data/mockData";
-import type { Patient } from "../../../src/data/mockData";
+import type { Patient } from "../../../src/types/domain";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MOODS = ["😢", "😟", "😐", "🙂", "😊"];
 const MOOD_LABELS = ["Sangat Berat", "Berat", "Biasa Saja", "Cukup Baik", "Sangat Baik"];
 
-function ApprovalCard({ session, onApprove }: {
+function ApprovalCard({ session, sessionDefs, onApprove }: {
   session: any;
+  sessionDefs: { day: number; title: string }[];
   onApprove: (day: number, status: "disetujui" | "ditolak", note: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const def = sessions.find((s) => s.day === session.day);
+  const def = sessionDefs.find((s) => s.day === session.day);
   const reflectionText =
     typeof session?.reflection === "string" && session.reflection.trim()
       ? session.reflection.trim()
@@ -130,7 +130,8 @@ export default function NursePatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getPatientById, getPatientSessions, approveSession } = useApp();
+  const { getPatientById, getPatientSessions, approveSession, getProgramSessions } = useApp();
+  const sessions = getProgramSessions();
 
   const patient = getPatientById(id ?? "") as Patient | undefined;
   const allSessions = getPatientSessions(id ?? "");
@@ -210,6 +211,7 @@ export default function NursePatientDetail() {
                   <ApprovalCard
                     key={s.day}
                     session={s}
+                    sessionDefs={sessions}
                     onApprove={(day, status, note) => approveSession(patient.id, day, status, note)}
                   />
                 ))}
