@@ -162,24 +162,23 @@ CREATE TABLE IF NOT EXISTS public.questionnaire_questions (
 
 -- -------------------------------------------------------------
 -- TABEL RELAXATION_TRACKS
--- Master library suara relaksasi (file distream dari Supabase Storage)
+-- Master library suara relaksasi (diputar via YouTube iframe WebView)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.relaxation_tracks (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title          TEXT NOT NULL,
-  description    TEXT NOT NULL DEFAULT '',
-  category       TEXT NOT NULL CHECK (category IN (
-                   'ombak','hujan','hutan','sungai','air-terjun',
-                   'burung','angin','musik','campuran'
-                 )),
-  audio_url      TEXT NOT NULL,
-  duration_sec   INTEGER NOT NULL DEFAULT 300,
-  thumbnail_url  TEXT,
-  license        TEXT,
-  source_ref     TEXT,
-  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-  sort_order     INTEGER NOT NULL DEFAULT 0,
-  created_at     TIMESTAMPTZ DEFAULT NOW()
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title            TEXT NOT NULL,
+  description      TEXT NOT NULL DEFAULT '',
+  category         TEXT NOT NULL CHECK (category IN (
+                     'ombak','hujan','hutan','sungai','air-terjun',
+                     'burung','angin','musik','campuran'
+                   )),
+  youtube_video_id TEXT NOT NULL,
+  duration_sec     INTEGER NOT NULL DEFAULT 300,
+  license          TEXT,
+  source_ref       TEXT,
+  is_active        BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order       INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- -------------------------------------------------------------

@@ -159,9 +159,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       title: r.title,
       description: r.description ?? "",
       category: r.category,
-      audioUrl: r.audio_url,
+      youtubeVideoId: r.youtube_video_id,
       durationSec: r.duration_sec ?? 300,
-      thumbnailUrl: r.thumbnail_url ?? undefined,
       license: r.license ?? undefined,
       sortOrder: r.sort_order ?? 0,
     })));

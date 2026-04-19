@@ -196,68 +196,86 @@ async function seedProgramContent() {
   }
 }
 
-// CATATAN: URL di bawah adalah PLACEHOLDER yang menunjuk ke Supabase Storage bucket
-// `relaxation-audio`. Sebelum app bisa memutar, upload file audio berlisensi
-// (YouTube Audio Library / Pixabay / Freesound CC0 / Epidemic Sound) ke bucket
-// dengan path sesuai, lalu set bucket visibility ke `public` (atau gunakan signed
-// URL). Track dengan URL https://soundhelix... adalah sample publik untuk
-// memvalidasi player tanpa upload — ganti dengan audio sesungguhnya.
+// `youtube_video_id` = 11 karakter ID video YouTube (bagian `v=` di URL).
+// 30 track di bawah disediakan user — ganti jika ada video yang di-takedown.
 const RELAXATION_TRACKS_SEED = [
-  {
-    title: "Ocean Calm",
-    description: "Deburan ombak yang ritmis untuk menenangkan pernapasan.",
-    category: "ombak",
-    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/ombak/ombak-01.mp3",
-    duration_sec: 600,
-    license: "TBD",
-    sort_order: 1,
-  },
-  {
-    title: "Hujan Lembut",
-    description: "Suara hujan pelan di atap — cocok untuk tidur atau meditasi.",
-    category: "hujan",
-    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/hujan/hujan-01.mp3",
-    duration_sec: 600,
-    license: "TBD",
-    sort_order: 1,
-  },
-  {
-    title: "Hutan Pagi",
-    description: "Keheningan hutan diiringi siulan burung ringan.",
-    category: "hutan",
-    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/hutan/hutan-01.mp3",
-    duration_sec: 600,
-    license: "TBD",
-    sort_order: 1,
-  },
-  {
-    title: "Sungai Mengalir",
-    description: "Aliran sungai jernih yang menenangkan.",
-    category: "sungai",
-    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/sungai/sungai-01.mp3",
-    duration_sec: 600,
-    license: "TBD",
-    sort_order: 1,
-  },
-  {
-    title: "Kicau Burung",
-    description: "Kicauan burung di pagi hari.",
-    category: "burung",
-    audio_url: "https://jqwrjdjcxolevesytorq.supabase.co/storage/v1/object/public/relaxation-audio/burung/burung-01.mp3",
-    duration_sec: 600,
-    license: "TBD",
-    sort_order: 1,
-  },
-  // Sample publik untuk validasi player tanpa perlu upload dulu
-  {
-    title: "Guided Breathing (Demo)",
-    description: "Musik panduan pernapasan — sample publik untuk demo.",
-    category: "musik",
-    audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    duration_sec: 372,
-    license: "SoundHelix (demo only)",
-    sort_order: 1,
-  },
+  // ── Ombak (4) ─────────────────────────────────────────────────
+  { title: "Ombak Pantai Tenang", description: "Deburan ombak ritmis untuk menenangkan pikiran.",
+    category: "ombak", youtube_video_id: "C69XIufCObU", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Ombak Pantai Tropis", description: "Suara pantai tropis yang menenangkan.",
+    category: "ombak", youtube_video_id: "YrV8_kWz7BQ", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+  { title: "Ombak Lembut", description: "Ombak pelan untuk fokus pada pernapasan.",
+    category: "ombak", youtube_video_id: "g1SuG5PHpfM", duration_sec: 3600, license: "YouTube", sort_order: 3 },
+  { title: "Ombak Senja", description: "Gelombang laut menjelang malam.",
+    category: "ombak", youtube_video_id: "M6S-I1FqGGw", duration_sec: 3600, license: "YouTube", sort_order: 4 },
+
+  // ── Hujan (4) ─────────────────────────────────────────────────
+  { title: "Hujan Lembut", description: "Suara hujan pelan untuk tidur atau meditasi.",
+    category: "hujan", youtube_video_id: "_T7EnG50BMI", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Hujan Pelan", description: "Hujan gerimis yang menenangkan.",
+    category: "hujan", youtube_video_id: "oYusohhIiZw", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+  { title: "Hujan Malam", description: "Suara hujan di malam hari.",
+    category: "hujan", youtube_video_id: "o8GrqUSdzi0", duration_sec: 3600, license: "YouTube", sort_order: 3 },
+  { title: "Hujan Hangat", description: "Hujan yang hangat dan lembut.",
+    category: "hujan", youtube_video_id: "h40WQf3rU8k", duration_sec: 3600, license: "YouTube", sort_order: 4 },
+
+  // ── Hutan (3) ─────────────────────────────────────────────────
+  { title: "Hutan Pagi", description: "Suasana hutan di pagi hari.",
+    category: "hutan", youtube_video_id: "OdIJ2x3nxzQ", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Hutan Sejuk", description: "Angin sepoi dan dedaunan di hutan.",
+    category: "hutan", youtube_video_id: "IvjMgVS6kng", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+  { title: "Hutan Tenang", description: "Keheningan hutan yang damai.",
+    category: "hutan", youtube_video_id: "6lEwV7hk1hk", duration_sec: 3600, license: "YouTube", sort_order: 3 },
+
+  // ── Sungai / Air mengalir (8) ─────────────────────────────────
+  { title: "Sungai Jernih", description: "Aliran sungai jernih yang menenangkan.",
+    category: "sungai", youtube_video_id: "HAzZH6wccew", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Aliran Air Pelan", description: "Gemericik air mengalir perlahan.",
+    category: "sungai", youtube_video_id: "77ZozI0rw7w", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+  { title: "Aliran Air Lembut", description: "Suara air sebagai background meditasi.",
+    category: "sungai", youtube_video_id: "IbQiZE6KuWc", duration_sec: 3600, license: "YouTube", sort_order: 3 },
+  { title: "Sungai Pegunungan", description: "Suara sungai di pegunungan yang sejuk.",
+    category: "sungai", youtube_video_id: "V1RPi2MYptM", duration_sec: 3600, license: "YouTube", sort_order: 4 },
+  { title: "Air Mengalir", description: "Aliran air yang konsisten untuk relaksasi.",
+    category: "sungai", youtube_video_id: "UTex0juGbqY", duration_sec: 3600, license: "YouTube", sort_order: 5 },
+  { title: "Sungai Deras Lembut", description: "Aliran air sungai yang jernih.",
+    category: "sungai", youtube_video_id: "FUhf3SrF3JQ", duration_sec: 3600, license: "YouTube", sort_order: 6 },
+  { title: "Aliran Air Sejuk", description: "Suara air mengalir yang lembut.",
+    category: "sungai", youtube_video_id: "c2NmyoXBXmE", duration_sec: 3600, license: "YouTube", sort_order: 7 },
+  { title: "Sungai Mengalir", description: "Aliran sungai yang tenang dan konsisten.",
+    category: "sungai", youtube_video_id: "1GjWHz3JBF0", duration_sec: 3600, license: "YouTube", sort_order: 8 },
+
+  // ── Air Terjun (2) ────────────────────────────────────────────
+  { title: "Air Terjun Tenang", description: "Gemuruh air terjun untuk fokus dan tenang.",
+    category: "air-terjun", youtube_video_id: "D8aEHMItxqY", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Air Terjun Segar", description: "Suara air terjun yang menyegarkan.",
+    category: "air-terjun", youtube_video_id: "1LdS8b5ur7M", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+
+  // ── Burung (2) ────────────────────────────────────────────────
+  { title: "Kicau Burung Pagi", description: "Kicauan burung di pagi hari.",
+    category: "burung", youtube_video_id: "zwenk-MvUWc", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Burung di Alam", description: "Suara burung di alam bebas.",
+    category: "burung", youtube_video_id: "L6SnMEmqngM", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+
+  // ── Angin (2) ─────────────────────────────────────────────────
+  { title: "Angin Sepoi", description: "Tiupan angin lembut yang menenangkan.",
+    category: "angin", youtube_video_id: "kmhBZLd76L0", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Angin Malam", description: "Suara angin di malam hari.",
+    category: "angin", youtube_video_id: "vDU1Gom7yJA", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+
+  // ── Musik (1) ─────────────────────────────────────────────────
+  { title: "Piano + Sungai", description: "Piano lembut berpadu dengan suara sungai.",
+    category: "musik", youtube_video_id: "lE6RYpe9IT0", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+
+  // ── Campuran (4) ──────────────────────────────────────────────
+  { title: "Air + Hutan", description: "Kombinasi suara air dan hutan untuk relaksasi mendalam.",
+    category: "campuran", youtube_video_id: "1wn-OSiNVjE", duration_sec: 3600, license: "YouTube", sort_order: 1 },
+  { title: "Air + Burung", description: "Suara air dengan kicau burung alami.",
+    category: "campuran", youtube_video_id: "XXIRWAEVs8o", duration_sec: 3600, license: "YouTube", sort_order: 2 },
+  { title: "Hutan + Air Mengalir", description: "Hutan dengan aliran air yang tenang.",
+    category: "campuran", youtube_video_id: "SfppNClE3po", duration_sec: 3600, license: "YouTube", sort_order: 3 },
+  { title: "Hujan + Burung", description: "Hujan lembut dengan suara burung.",
+    category: "campuran", youtube_video_id: "QQ6x9Aqd4jE", duration_sec: 3600, license: "YouTube", sort_order: 4 },
 ];
 
 async function seedRelaxationTracks() {

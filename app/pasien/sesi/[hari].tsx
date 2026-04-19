@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, StatusBar, Alert, ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import { useApp } from "../../../src/context/AppContext";
 import type { Patient, RelaxationTrack, RelaxationCategory } from "../../../src/types/domain";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -37,11 +37,6 @@ const CATEGORY_META: Record<RelaxationCategory, { label: string; icon: string }>
   "campuran":   { label: "Campuran",   icon: "layers" },
 };
 
-const fmtTime = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
-
 function MusicPlayer({
   tracks,
   fallbackTitle,
@@ -53,136 +48,60 @@ function MusicPlayer({
   fallbackType: string;
   onFinish?: () => void;
 }) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const finishedRef = useRef(false);
+  const playerRef = useRef<YoutubeIframeRef>(null);
   const [selectedId, setSelectedId] = useState<string | null>(tracks[0]?.id ?? null);
   const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [finished, setFinished] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [positionMs, setPositionMs] = useState(0);
-  const [durationMs, setDurationMs] = useState(0);
 
   const selectedTrack = useMemo(
     () => tracks.find((t) => t.id === selectedId) ?? tracks[0] ?? null,
     [tracks, selectedId],
   );
 
-  useEffect(() => {
-    Audio.setAudioModeAsync({
-      staysActiveInBackground: false,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: true,
-    }).catch(() => {});
-    return () => {
-      soundRef.current?.unloadAsync().catch(() => {});
-      soundRef.current = null;
-    };
-  }, []);
-
-  // Load track whenever selection changes
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!selectedTrack) return;
-      setErrorMsg(null);
-      setPositionMs(0);
-      setDurationMs(selectedTrack.durationSec * 1000);
+  const onChangeState = useCallback((state: string) => {
+    if (state === "playing") setPlaying(true);
+    else if (state === "paused" || state === "buffering") setPlaying(false);
+    else if (state === "ended") {
       setPlaying(false);
-      finishedRef.current = false;
-      setLoading(true);
-
-      try {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: selectedTrack.audioUrl },
-          { shouldPlay: false, progressUpdateIntervalMillis: 500 },
-          (status) => {
-            if (cancelled) return;
-            onPlaybackStatus(status);
-          },
-        );
-        if (cancelled) {
-          await sound.unloadAsync();
-          return;
-        }
-        soundRef.current = sound;
-      } catch (err: any) {
-        if (!cancelled) setErrorMsg(err?.message ?? "Gagal memuat audio");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTrack?.id]);
-
-  const onPlaybackStatus = (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) {
-      if ("error" in status && status.error) {
-        setErrorMsg(String(status.error));
-      }
-      return;
-    }
-    setPlaying(status.isPlaying);
-    setPositionMs(status.positionMillis ?? 0);
-    if (status.durationMillis) setDurationMs(status.durationMillis);
-    if (status.didJustFinish && !finishedRef.current) {
-      finishedRef.current = true;
+      setFinished(true);
       onFinish?.();
     }
+  }, [onFinish]);
+
+  const onError = useCallback((err: string) => {
+    setErrorMsg(err || "Gagal memuat video");
+    setPlaying(false);
+  }, []);
+
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    setReady(false);
+    setPlaying(false);
+    setFinished(false);
+    setErrorMsg(null);
   };
 
-  const toggle = async () => {
-    const sound = soundRef.current;
-    if (!sound) return;
-    try {
-      const status = await sound.getStatusAsync();
-      if (!status.isLoaded) return;
-      if (status.isPlaying) {
-        await sound.pauseAsync();
-      } else {
-        if (status.didJustFinish || (status.durationMillis && status.positionMillis >= status.durationMillis)) {
-          await sound.setPositionAsync(0);
-          finishedRef.current = false;
-        }
-        await sound.playAsync();
-      }
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? "Gagal memutar audio");
-    }
-  };
+  const toggle = () => setPlaying((p) => !p);
 
-  const restart = async () => {
-    const sound = soundRef.current;
-    if (!sound) return;
-    try {
-      await sound.setPositionAsync(0);
-      finishedRef.current = false;
-    } catch {}
-  };
-
-  const pct = durationMs > 0 ? (positionMs / durationMs) * 100 : 0;
   const displayTitle = selectedTrack?.title ?? fallbackTitle;
   const displayType = selectedTrack ? CATEGORY_META[selectedTrack.category]?.label ?? fallbackType : fallbackType;
 
   if (tracks.length === 0) {
     return (
       <View style={{ padding: 16, borderRadius: 14, backgroundColor: "#F7E8EE", gap: 6 }}>
-        <Text style={{ fontSize: 13, fontWeight: "700", color: "#C96B8A" }}>Belum ada suara relaksasi</Text>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: "#C96B8A" }}>Belum ada video relaksasi</Text>
         <Text style={{ fontSize: 12, color: "#6B6B80", lineHeight: 18 }}>
-          Hubungi perawatmu untuk meminta konten suara relaksasi ditambahkan.
+          Hubungi perawatmu untuk meminta konten relaksasi ditambahkan.
         </Text>
       </View>
     );
   }
 
   return (
-    <View style={{ gap: 16 }}>
-      {/* Category/track selector */}
+    <View style={{ gap: 14 }}>
+      {/* Category selector */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 8, paddingVertical: 2 }}>
           {tracks.map((t) => {
@@ -191,7 +110,7 @@ function MusicPlayer({
             return (
               <TouchableOpacity
                 key={t.id}
-                onPress={() => setSelectedId(t.id)}
+                onPress={() => handleSelect(t.id)}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -212,26 +131,35 @@ function MusicPlayer({
         </View>
       </ScrollView>
 
-      {/* Waveform */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, height: 60 }}>
-        {Array.from({ length: 20 }, (_, i) => {
-          const h = 8 + Math.abs(Math.sin(i * 0.8)) * 32;
-          const progressed = pct / 100 > i / 20;
-          return (
-            <View
-              key={i}
-              style={{
-                width: 8,
-                borderRadius: 4,
-                height: h,
-                backgroundColor: "#8B7EC4",
-                opacity: progressed ? 1 : 0.3,
-              }}
-            />
-          );
-        })}
+      {/* YouTube iframe */}
+      <View style={{ borderRadius: 14, overflow: "hidden", backgroundColor: "#0A0A0A", position: "relative" }}>
+        {selectedTrack ? (
+          <YoutubePlayer
+            ref={playerRef}
+            key={selectedTrack.id}
+            height={200}
+            play={playing}
+            videoId={selectedTrack.youtubeVideoId}
+            onChangeState={onChangeState}
+            onReady={() => setReady(true)}
+            onError={onError}
+            webViewProps={{ androidLayerType: "hardware" }}
+            initialPlayerParams={{
+              controls: true,
+              modestbranding: true,
+              rel: false,
+              iv_load_policy: 3,
+            }}
+          />
+        ) : null}
+        {!ready && !errorMsg && (
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color="white" />
+          </View>
+        )}
       </View>
 
+      {/* Track info */}
       <View style={{ alignItems: "center", gap: 6 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Ionicons name="volume-high" size={16} color="#8B7EC4" />
@@ -249,39 +177,26 @@ function MusicPlayer({
         ) : null}
       </View>
 
-      {/* Progress */}
-      <View style={{ width: "100%", gap: 6 }}>
-        <View style={{ height: 8, backgroundColor: "#EEE9F9", borderRadius: 4, overflow: "hidden" }}>
-          <View style={{ height: 8, borderRadius: 4, backgroundColor: "#8B7EC4", width: `${pct}%` as any }} />
-        </View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 12, color: "#9B9BAE" }}>{fmtTime(positionMs)}</Text>
-          <Text style={{ fontSize: 12, color: "#9B9BAE" }}>{fmtTime(durationMs)}</Text>
-        </View>
-      </View>
-
-      {/* Controls */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 }}>
-        <TouchableOpacity onPress={restart} disabled={loading || !!errorMsg}>
-          <Ionicons name="refresh" size={24} color={loading || errorMsg ? "#D0D0D8" : "#9B9BAE"} />
-        </TouchableOpacity>
+      {/* Quick toggle (shortcut ke iframe controls) */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
         <TouchableOpacity
           onPress={toggle}
-          disabled={loading || !!errorMsg}
+          disabled={!ready || !!errorMsg}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: loading || errorMsg ? "#C9C4D8" : "#8B7EC4",
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
+            gap: 10,
+            paddingHorizontal: 22,
+            paddingVertical: 12,
+            borderRadius: 28,
+            backgroundColor: !ready || errorMsg ? "#C9C4D8" : "#8B7EC4",
           }}
+          activeOpacity={0.8}
         >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Ionicons name={playing ? "pause" : "play"} size={24} color="white" />
-          )}
+          <Ionicons name={playing ? "pause" : "play"} size={18} color="white" />
+          <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>
+            {playing ? "Jeda" : "Putar"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -289,15 +204,15 @@ function MusicPlayer({
         <View style={{ backgroundColor: "#FDECEC", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
           <Ionicons name="alert-circle" size={18} color="#C9414A" style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 12, color: "#8B2E37", lineHeight: 18 }}>
-            Gagal memutar audio. Pastikan koneksi internetmu stabil. ({errorMsg})
+            Gagal memutar video. Pastikan koneksi internetmu stabil atau video masih tersedia. ({errorMsg})
           </Text>
         </View>
       )}
 
-      {finishedRef.current && !errorMsg && (
+      {finished && !errorMsg && (
         <View style={{ backgroundColor: "#E8F5EE", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Ionicons name="checkmark-circle" size={18} color="#6BAF8F" />
-          <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600" }}>Sesi musik selesai ✨</Text>
+          <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600" }}>Video relaksasi selesai ✨</Text>
         </View>
       )}
     </View>

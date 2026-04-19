@@ -14,9 +14,8 @@ export interface RelaxationTrack {
   title: string;
   description: string;
   category: RelaxationCategory;
-  audioUrl: string;
+  youtubeVideoId: string;
   durationSec: number;
-  thumbnailUrl?: string;
   license?: string;
   sortOrder: number;
 }
