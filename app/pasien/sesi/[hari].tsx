@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, StatusBar, Alert, ActivityIndicator,
@@ -6,6 +6,15 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  RecordingPresets,
+} from "expo-audio";
 import { useApp } from "../../../src/context/AppContext";
 import type { Patient, RelaxationTrack, RelaxationCategory } from "../../../src/types/domain";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +33,14 @@ const MOODS = [
   { value: 4, emoji: "🙂", label: "Cukup Baik" },
   { value: 5, emoji: "😊", label: "Sangat Baik" },
 ];
+
+const MAX_PLAY_SEC = 30 * 60;
+const MAX_AFIRMASI_SEC = 120;
+
+const fmtSec = (sec: number) => {
+  const s = Math.max(0, Math.floor(sec));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
 
 const CATEGORY_META: Record<RelaxationCategory, { label: string; icon: string }> = {
   "ombak":      { label: "Ombak",      icon: "water" },
@@ -54,6 +71,7 @@ function MusicPlayer({
   const [ready, setReady] = useState(false);
   const [finished, setFinished] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   const selectedTrack = useMemo(
     () => tracks.find((t) => t.id === selectedId) ?? tracks[0] ?? null,
@@ -81,7 +99,25 @@ function MusicPlayer({
     setPlaying(false);
     setFinished(false);
     setErrorMsg(null);
+    setElapsedSec(0);
   };
+
+  useEffect(() => {
+    if (!playing || !ready || finished) return;
+    const interval = setInterval(async () => {
+      try {
+        const t = await playerRef.current?.getCurrentTime();
+        if (typeof t !== "number") return;
+        setElapsedSec(t);
+        if (t >= MAX_PLAY_SEC) {
+          setPlaying(false);
+          setFinished(true);
+          onFinish?.();
+        }
+      } catch {}
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [playing, ready, finished, onFinish]);
 
   const toggle = () => setPlaying((p) => !p);
 
@@ -177,11 +213,31 @@ function MusicPlayer({
         ) : null}
       </View>
 
+      {/* Durasi limit 30 menit */}
+      <View style={{ gap: 6 }}>
+        <View style={{ height: 6, backgroundColor: "#EEE9F9", borderRadius: 3, overflow: "hidden" }}>
+          <View
+            style={{
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: finished ? "#6BAF8F" : "#8B7EC4",
+              width: `${Math.min(100, (elapsedSec / MAX_PLAY_SEC) * 100)}%` as any,
+            }}
+          />
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 11, color: "#9B9BAE" }}>
+            {fmtSec(Math.min(elapsedSec, MAX_PLAY_SEC))} / {fmtSec(MAX_PLAY_SEC)}
+          </Text>
+          <Text style={{ fontSize: 10, color: "#9B9BAE", fontStyle: "italic" }}>Batas sesi 30 menit</Text>
+        </View>
+      </View>
+
       {/* Quick toggle (shortcut ke iframe controls) */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
         <TouchableOpacity
           onPress={toggle}
-          disabled={!ready || !!errorMsg}
+          disabled={!ready || !!errorMsg || finished}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -189,13 +245,13 @@ function MusicPlayer({
             paddingHorizontal: 22,
             paddingVertical: 12,
             borderRadius: 28,
-            backgroundColor: !ready || errorMsg ? "#C9C4D8" : "#8B7EC4",
+            backgroundColor: !ready || errorMsg || finished ? "#C9C4D8" : "#8B7EC4",
           }}
           activeOpacity={0.8}
         >
           <Ionicons name={playing ? "pause" : "play"} size={18} color="white" />
           <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>
-            {playing ? "Jeda" : "Putar"}
+            {finished ? "Selesai" : playing ? "Jeda" : "Putar"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -212,8 +268,222 @@ function MusicPlayer({
       {finished && !errorMsg && (
         <View style={{ backgroundColor: "#E8F5EE", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Ionicons name="checkmark-circle" size={18} color="#6BAF8F" />
-          <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600" }}>Video relaksasi selesai ✨</Text>
+          <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600", flex: 1 }}>
+            Sesi relaksasi 30 menit selesai ✨ Pilih kategori lain untuk mulai baru.
+          </Text>
         </View>
+      )}
+    </View>
+  );
+}
+
+function AfirmasiRecorder({
+  confirmedUri,
+  onConfirm,
+  onClear,
+}: {
+  confirmedUri: string | null;
+  onConfirm: (uri: string) => void;
+  onClear: () => void;
+}) {
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recState = useAudioRecorderState(recorder, 250);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [permError, setPermError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const player = useAudioPlayer(previewUri ?? confirmedUri ?? null);
+  const playerStatus = useAudioPlayerStatus(player);
+
+  const recordingSec = Math.floor((recState.durationMillis ?? 0) / 1000);
+
+  useEffect(() => {
+    if (recState.isRecording && recordingSec >= MAX_AFIRMASI_SEC) {
+      (async () => {
+        try {
+          await recorder.stop();
+          const uri = recorder.uri;
+          if (uri) setPreviewUri(uri);
+        } catch {}
+      })();
+    }
+  }, [recState.isRecording, recordingSec, recorder]);
+
+  const startRecording = useCallback(async () => {
+    setPermError(null);
+    setBusy(true);
+    try {
+      const perm = await requestRecordingPermissionsAsync();
+      if (!perm.granted) {
+        setPermError("Izin mikrofon ditolak. Aktifkan di pengaturan aplikasi.");
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      setPreviewUri(null);
+      onClear();
+      recorder.record();
+    } catch (err: any) {
+      setPermError(err?.message ?? "Gagal memulai rekaman");
+    } finally {
+      setBusy(false);
+    }
+  }, [onClear, recorder]);
+
+  const stopRecording = useCallback(async () => {
+    setBusy(true);
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (uri) setPreviewUri(uri);
+    } catch (err: any) {
+      setPermError(err?.message ?? "Gagal menghentikan rekaman");
+    } finally {
+      setBusy(false);
+    }
+  }, [recorder]);
+
+  const retake = useCallback(() => {
+    try { player.pause(); } catch {}
+    setPreviewUri(null);
+    onClear();
+  }, [onClear, player]);
+
+  const confirm = useCallback(() => {
+    if (!previewUri) return;
+    try { player.pause(); } catch {}
+    onConfirm(previewUri);
+  }, [onConfirm, player, previewUri]);
+
+  const togglePlay = useCallback(() => {
+    if (playerStatus.playing) player.pause();
+    else {
+      if (playerStatus.currentTime && playerStatus.duration && playerStatus.currentTime >= playerStatus.duration - 0.1) {
+        player.seekTo(0).catch(() => {});
+      }
+      player.play();
+    }
+  }, [player, playerStatus.currentTime, playerStatus.duration, playerStatus.playing]);
+
+  const isRecording = recState.isRecording;
+  const hasPreview = !!previewUri && !confirmedUri;
+  const isConfirmed = !!confirmedUri;
+
+  return (
+    <View
+      style={{
+        backgroundColor: "#FEFBF5",
+        borderRadius: 14,
+        padding: 16,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: "#F0E8EE",
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Ionicons name="mic" size={18} color="#6BAF8F" />
+        <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", flex: 1 }}>
+          Rekam Suara Afirmasi
+        </Text>
+        <Text style={{ fontSize: 11, color: "#9B9BAE" }}>Maks 2 menit</Text>
+      </View>
+      <Text style={{ fontSize: 12, color: "#6B6B80", lineHeight: 18 }}>
+        Bacakan afirmasi di atas dengan suara yang nyaman. Rekaman akan dikirim ke perawat bersama sesi hari ini.
+      </Text>
+
+      {isRecording && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#FDECEC", padding: 12, borderRadius: 12 }}>
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#C9414A" }} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#C9414A", flex: 1 }}>
+            Merekam... {fmtSec(recordingSec)} / {fmtSec(MAX_AFIRMASI_SEC)}
+          </Text>
+        </View>
+      )}
+
+      {(hasPreview || isConfirmed) && (
+        <View style={{ backgroundColor: "#EEE9F9", borderRadius: 12, padding: 12, gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TouchableOpacity
+              onPress={togglePlay}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#8B7EC4", alignItems: "center", justifyContent: "center" }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={playerStatus.playing ? "pause" : "play"} size={18} color="white" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#2D2D3E" }}>
+                {isConfirmed ? "Rekaman tersimpan" : "Pratinjau rekaman"}
+              </Text>
+              <Text style={{ fontSize: 11, color: "#6B6B80" }}>
+                {fmtSec(playerStatus.currentTime ?? 0)} / {fmtSec(playerStatus.duration ?? 0)}
+              </Text>
+            </View>
+            {isConfirmed && <Ionicons name="checkmark-circle" size={22} color="#6BAF8F" />}
+          </View>
+        </View>
+      )}
+
+      {permError && (
+        <View style={{ backgroundColor: "#FDECEC", borderRadius: 10, padding: 10 }}>
+          <Text style={{ fontSize: 12, color: "#8B2E37" }}>{permError}</Text>
+        </View>
+      )}
+
+      {/* Controls */}
+      {!isRecording && !hasPreview && !isConfirmed && (
+        <TouchableOpacity
+          onPress={startRecording}
+          disabled={busy}
+          style={{ backgroundColor: busy ? "#A7C9B7" : "#6BAF8F", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+          activeOpacity={0.8}
+        >
+          {busy ? <ActivityIndicator color="white" /> : <Ionicons name="mic" size={18} color="white" />}
+          <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>Mulai Rekam</Text>
+        </TouchableOpacity>
+      )}
+
+      {isRecording && (
+        <TouchableOpacity
+          onPress={stopRecording}
+          disabled={busy}
+          style={{ backgroundColor: "#C9414A", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="stop" size={18} color="white" />
+          <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>Hentikan</Text>
+        </TouchableOpacity>
+      )}
+
+      {hasPreview && (
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <TouchableOpacity
+            onPress={retake}
+            style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center", borderWidth: 2, borderColor: "#E8789A", flexDirection: "row", justifyContent: "center", gap: 6 }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={16} color="#C96B8A" />
+            <Text style={{ color: "#C96B8A", fontWeight: "700", fontSize: 13 }}>Rekam Ulang</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={confirm}
+            style={{ flex: 1, backgroundColor: "#6BAF8F", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="checkmark" size={16} color="white" />
+            <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>Gunakan</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isConfirmed && (
+        <TouchableOpacity
+          onPress={retake}
+          style={{ borderRadius: 12, paddingVertical: 12, alignItems: "center", borderWidth: 2, borderColor: "#E8789A", flexDirection: "row", justifyContent: "center", gap: 6 }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh" size={16} color="#C96B8A" />
+          <Text style={{ color: "#C96B8A", fontWeight: "700", fontSize: 13 }}>Ganti Rekaman</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -223,7 +493,15 @@ export default function PatientSession() {
   const { hari } = useLocalSearchParams<{ hari: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { currentUser, getPatientSessions, completeSession, getEffectiveCurrentDay, getProgramSessions, getRelaxationTracks } = useApp();
+  const {
+    currentUser,
+    getPatientSessions,
+    completeSession,
+    getEffectiveCurrentDay,
+    getProgramSessions,
+    getRelaxationTracks,
+    uploadAfirmasiRecording,
+  } = useApp();
   const patient = currentUser as Patient;
   const sessions = getProgramSessions();
 
@@ -240,6 +518,7 @@ export default function PatientSession() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(Date.now());
+  const [afirmasiUri, setAfirmasiUri] = useState<string | null>(null);
 
   const modules = day === 1 ? MODULES_ALL : MODULES_ALL.slice(1);
 
@@ -252,6 +531,11 @@ export default function PatientSession() {
   }
 
   const handleCompleteModule = () => {
+    const mod = modules[activeModule];
+    if (mod?.id === "afirmasi" && !afirmasiUri) {
+      Alert.alert("Rekaman Belum Ada", "Mohon rekam suara afirmasimu terlebih dahulu sebelum melanjutkan.");
+      return;
+    }
     const next = new Set(completedModules);
     next.add(activeModule);
     setCompletedModules(next);
@@ -267,6 +551,21 @@ export default function PatientSession() {
     }
     if (submitting) return;
     setSubmitting(true);
+
+    let audioPath: string | undefined;
+    if (afirmasiUri) {
+      const uploadRes = await uploadAfirmasiRecording(patient.id, day, afirmasiUri);
+      if (!uploadRes.success) {
+        setSubmitting(false);
+        Alert.alert(
+          "Gagal Mengunggah Rekaman",
+          `Rekaman afirmasi gagal terunggah. Coba lagi.\n\nDetail: ${uploadRes.error ?? "tidak diketahui"}`,
+        );
+        return;
+      }
+      audioPath = uploadRes.path;
+    }
+
     const durationMinutes = Math.max(1, Math.round((Date.now() - startTime) / 60000));
     const result = await completeSession(patient.id, {
       day,
@@ -275,6 +574,7 @@ export default function PatientSession() {
       durationMinutes,
       mood,
       refleksiAnswers: reflection ? { q1: reflection } : undefined,
+      affirmationAudioUrl: audioPath,
     });
     setSubmitting(false);
     if (!result.success) {
@@ -420,6 +720,11 @@ export default function PatientSession() {
                   <Text style={{ fontSize: 13, color: "#C96B8A" }}>{phrase}</Text>
                 </View>
               ))}
+              <AfirmasiRecorder
+                confirmedUri={afirmasiUri}
+                onConfirm={(uri) => setAfirmasiUri(uri)}
+                onClear={() => setAfirmasiUri(null)}
+              />
             </View>
           )}
 

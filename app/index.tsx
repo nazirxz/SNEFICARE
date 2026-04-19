@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,33 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useApp();
+  const { login, isHydrating, userRole } = useApp();
   const router = useRouter();
+
+  useEffect(() => {
+    if (isHydrating) return;
+    if (userRole === "pasien") router.replace("/pasien");
+    else if (userRole === "perawat") router.replace("/perawat");
+  }, [isHydrating, userRole, router]);
+
+  if (isHydrating || userRole) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#FDE8F0", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FDE8F0" />
+        <View
+          style={{
+            width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center",
+            shadowColor: "#C96B8A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+            elevation: 8, backgroundColor: "#E8789A",
+          }}
+        >
+          <Ionicons name="heart" size={40} color="white" />
+        </View>
+        <Text style={{ fontSize: 24, color: "#C96B8A", fontWeight: "800" }}>SNEfi Care</Text>
+        <ActivityIndicator color="#C96B8A" />
+      </View>
+    );
+  }
 
   const handleLogin = async () => {
     if (!username || !password) {

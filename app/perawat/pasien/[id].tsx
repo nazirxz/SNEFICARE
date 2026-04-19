@@ -1,11 +1,93 @@
-import { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Alert } from "react-native";
+import { useState, useCallback, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Alert, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useApp } from "../../../src/context/AppContext";
 import type { Patient } from "../../../src/types/domain";
 import type { QuestionnaireSubmission, PatientQuestionnaireBundle } from "../../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const fmtSec = (sec: number) => {
+  const s = Math.max(0, Math.floor(sec));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
+
+function AfirmasiAudioPlayer({ storagePath }: { storagePath: string }) {
+  const { getAfirmasiSignedUrl } = useApp();
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const player = useAudioPlayer(signedUrl);
+  const status = useAudioPlayerStatus(player);
+
+  const fetchUrl = useCallback(async () => {
+    if (signedUrl || loading) return;
+    setLoading(true);
+    setError(null);
+    const res = await getAfirmasiSignedUrl(storagePath);
+    setLoading(false);
+    if (!res.success || !res.url) {
+      setError(res.error ?? "Gagal memuat rekaman");
+      return;
+    }
+    setSignedUrl(res.url);
+  }, [getAfirmasiSignedUrl, loading, signedUrl, storagePath]);
+
+  useEffect(() => {
+    return () => { try { player.pause(); } catch {} };
+  }, [player]);
+
+  const toggle = useCallback(async () => {
+    if (!signedUrl) {
+      await fetchUrl();
+      return;
+    }
+    if (status.playing) player.pause();
+    else {
+      if (status.currentTime && status.duration && status.currentTime >= status.duration - 0.1) {
+        player.seekTo(0).catch(() => {});
+      }
+      player.play();
+    }
+  }, [fetchUrl, player, signedUrl, status.currentTime, status.duration, status.playing]);
+
+  const progress = status.duration > 0 ? Math.min(100, (status.currentTime / status.duration) * 100) : 0;
+
+  return (
+    <View style={{ backgroundColor: "#EEE9F9", borderRadius: 12, padding: 12, gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <TouchableOpacity
+          onPress={toggle}
+          disabled={loading}
+          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#8B7EC4", alignItems: "center", justifyContent: "center" }}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Ionicons name={status.playing ? "pause" : "play"} size={18} color="white" />
+          )}
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="mic" size={12} color="#6BAF8F" />
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#2D2D3E" }}>Rekaman afirmasi pasien</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: "#6B6B80", marginTop: 2 }}>
+            {signedUrl ? `${fmtSec(status.currentTime ?? 0)} / ${fmtSec(status.duration ?? 0)}` : "Ketuk untuk memuat"}
+          </Text>
+        </View>
+      </View>
+      {signedUrl && (
+        <View style={{ height: 4, backgroundColor: "rgba(139,126,196,0.3)", borderRadius: 2, overflow: "hidden" }}>
+          <View style={{ width: `${progress}%` as any, height: 4, backgroundColor: "#8B7EC4" }} />
+        </View>
+      )}
+      {error && <Text style={{ fontSize: 11, color: "#8B2E37" }}>{error}</Text>}
+    </View>
+  );
+}
 
 const SCORE_LABELS = ["—", "Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
 
@@ -245,6 +327,12 @@ function ApprovalCard({ session, sessionDefs, onApprove }: {
               {session.completedAt ? ` · ${new Date(session.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : ""}
             </Text>
             {session.mood ? <Text style={{ fontSize: 14 }}>{MOODS[session.mood - 1]}</Text> : null}
+            {session.affirmationAudioUrl ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#EEE9F9", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <Ionicons name="mic" size={10} color="#8B7EC4" />
+                <Text style={{ fontSize: 9, fontWeight: "700", color: "#8B7EC4" }}>Audio</Text>
+              </View>
+            ) : null}
           </View>
         </View>
         <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color="#9B9BAE" />
@@ -253,6 +341,10 @@ function ApprovalCard({ session, sessionDefs, onApprove }: {
       {/* Expanded */}
       {expanded && (
         <View style={{ padding: 14, gap: 12 }}>
+          {session?.affirmationAudioUrl ? (
+            <AfirmasiAudioPlayer storagePath={session.affirmationAudioUrl} />
+          ) : null}
+
           {reflectionText ? (
             <View style={{ backgroundColor: "#F8F5FF", borderRadius: 12, padding: 12 }}>
               <Text style={{ fontSize: 11, fontWeight: "600", color: "#9B9BAE", marginBottom: 4 }}>Refleksi pasien:</Text>

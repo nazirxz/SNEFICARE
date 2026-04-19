@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { File } from "expo-file-system";
 import { supabase, createEphemeralAuthClient } from "../lib/supabase";
 import type { PatientQuestionnaireBundle, QuestionnaireSubmission } from "../data/researchQuestionnaire";
 import type { Patient, Nurse, SessionDefinition, SessionRecord, RelaxationTrack } from "../types/domain";
+
+const AFIRMASI_BUCKET = "affirmation-recordings";
 
 export type UserRole = "pasien" | "perawat";
 
@@ -40,6 +43,8 @@ interface AppContextType {
   getQuestionnaireBundle: (patientId: string) => PatientQuestionnaireBundle;
   saveQuestionnaireSubmission: (patientId: string, submission: QuestionnaireSubmission) => Promise<{ success: boolean; error?: string }>;
   getRelaxationTracks: () => RelaxationTrack[];
+  uploadAfirmasiRecording: (patientId: string, day: number, fileUri: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  getAfirmasiSignedUrl: (path: string) => Promise<{ success: boolean; url?: string; error?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -576,6 +581,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [questionnairesByPatient]
   );
 
+  const uploadAfirmasiRecording = useCallback(async (patientId: string, day: number, fileUri: string): Promise<{ success: boolean; path?: string; error?: string }> => {
+    try {
+      const path = `${patientId}/${day}.m4a`;
+      const file = new File(fileUri);
+      const buffer = await file.arrayBuffer();
+      const { error } = await supabase.storage
+        .from(AFIRMASI_BUCKET)
+        .upload(path, buffer, {
+          contentType: "audio/m4a",
+          upsert: true,
+        });
+      if (error) return { success: false, error: error.message };
+      return { success: true, path };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal mengunggah rekaman" };
+    }
+  }, []);
+
+  const getAfirmasiSignedUrl = useCallback(async (path: string): Promise<{ success: boolean; url?: string; error?: string }> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(AFIRMASI_BUCKET)
+        .createSignedUrl(path, 60 * 60);
+      if (error || !data?.signedUrl) return { success: false, error: error?.message ?? "Gagal membuat URL rekaman" };
+      return { success: true, url: data.signedUrl };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal membuat URL rekaman" };
+    }
+  }, []);
+
   const saveQuestionnaireSubmission = useCallback(async (patientId: string, submission: QuestionnaireSubmission): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase
@@ -619,6 +654,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getProgramSessions, getQuestionnaireQuestions,
       getQuestionnaireBundle, saveQuestionnaireSubmission,
       getRelaxationTracks,
+      uploadAfirmasiRecording, getAfirmasiSignedUrl,
     }}>
       {children}
     </AppContext.Provider>
