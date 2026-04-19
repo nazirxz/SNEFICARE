@@ -323,6 +323,7 @@ export default function PatientSession() {
   const [mood, setMood] = useState<number | null>(null);
   const [reflection, setReflection] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(Date.now());
 
   const modules = day === 1 ? MODULES_ALL : MODULES_ALL.slice(1);
@@ -344,13 +345,15 @@ export default function PatientSession() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!mood) {
       Alert.alert("Pilih Mood", "Silakan pilih mood kamu hari ini.");
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const durationMinutes = Math.max(1, Math.round((Date.now() - startTime) / 60000));
-    completeSession(patient.id, {
+    const result = await completeSession(patient.id, {
       day,
       status: "selesai",
       completedAt: new Date().toISOString(),
@@ -358,6 +361,14 @@ export default function PatientSession() {
       mood,
       refleksiAnswers: reflection ? { q1: reflection } : undefined,
     });
+    setSubmitting(false);
+    if (!result.success) {
+      Alert.alert(
+        "Gagal Menyimpan",
+        `Sesi belum tersimpan di server. Coba lagi.\n\nDetail: ${result.error ?? "tidak diketahui"}`,
+      );
+      return;
+    }
     setSubmitted(true);
   };
 
@@ -556,10 +567,14 @@ export default function PatientSession() {
 
             <TouchableOpacity
               onPress={handleSubmit}
-              style={{ backgroundColor: "#C96B8A", borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+              disabled={submitting}
+              style={{ backgroundColor: submitting ? "#D9A8B9" : "#C96B8A", borderRadius: 16, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}
               activeOpacity={0.8}
             >
-              <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>Selesaikan Sesi Hari Ini 🎉</Text>
+              {submitting && <ActivityIndicator color="white" />}
+              <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>
+                {submitting ? "Menyimpan..." : "Selesaikan Sesi Hari Ini 🎉"}
+              </Text>
             </TouchableOpacity>
           </View>
         )}

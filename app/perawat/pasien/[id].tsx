@@ -4,7 +4,186 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../../src/context/AppContext";
 import type { Patient } from "../../../src/types/domain";
+import type { QuestionnaireSubmission, PatientQuestionnaireBundle } from "../../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const SCORE_LABELS = ["—", "Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
+
+function scoreStats(s: QuestionnaireSubmission) {
+  const scores = s.scores ?? [];
+  const total = scores.reduce((a, n) => a + n, 0);
+  const count = scores.length;
+  const avg = count > 0 ? total / count : 0;
+  return { total, count, avg };
+}
+
+function QuestionnaireCard({
+  submission,
+  label,
+  accent,
+  questions,
+}: {
+  submission: QuestionnaireSubmission;
+  label: string;
+  accent: string;
+  questions: string[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { total, count, avg } = scoreStats(submission);
+  const submittedDate = new Date(submission.submittedAt).toLocaleDateString("id-ID", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+
+  return (
+    <View style={{ borderRadius: 16, backgroundColor: "white", borderWidth: 1.5, borderColor: accent + "55", overflow: "hidden" }}>
+      <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: accent + "15" }}>
+        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: accent, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="document-text" size={18} color="white" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>{label}</Text>
+          <Text style={{ fontSize: 11, color: "#9B9BAE", marginTop: 1 }}>Dikirim {submittedDate}</Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 18, fontWeight: "800", color: accent }}>{total}</Text>
+          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Total · {count} item</Text>
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Rata-rata</Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{avg.toFixed(2)}</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Inisial</Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{submission.demographics.initials || "—"}</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Usia</Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{submission.demographics.age || "—"}</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => setExpanded(!expanded)}
+        style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#F0EAF5" }}
+        activeOpacity={0.8}
+      >
+        <Text style={{ fontSize: 12, fontWeight: "600", color: accent }}>
+          {expanded ? "Sembunyikan detail" : "Lihat detail jawaban & demografi"}
+        </Text>
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={14} color={accent} />
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 12 }}>
+          <View style={{ backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, gap: 4 }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: "#6B6B80" }}>Data Diri</Text>
+            {[
+              ["Jenis kelamin", submission.demographics.sex],
+              ["Pendidikan", submission.demographics.education],
+              ["Pekerjaan", submission.demographics.occupation],
+              ["Agama", submission.demographics.religion],
+              ["Suku", submission.demographics.ethnicity],
+            ].map(([k, v]) => (
+              <View key={k} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, color: "#9B9BAE" }}>{k}</Text>
+                <Text style={{ fontSize: 11, color: "#2D2D3E", fontWeight: "600" }}>{v || "—"}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: "#6B6B80" }}>Jawaban per Item</Text>
+            {submission.scores.map((sc, i) => {
+              const prompt = questions[i] ?? `Item ${i + 1}`;
+              const labelText = SCORE_LABELS[Math.min(Math.max(sc, 0), SCORE_LABELS.length - 1)] ?? String(sc);
+              return (
+                <View key={i} style={{ flexDirection: "row", gap: 8, paddingVertical: 4, borderBottomWidth: i === submission.scores.length - 1 ? 0 : 1, borderBottomColor: "#F5F0F8" }}>
+                  <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: accent + "22", alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: accent }}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: "#4A4A6A", lineHeight: 16 }} numberOfLines={2}>{prompt}</Text>
+                    <Text style={{ fontSize: 10, color: "#9B9BAE", marginTop: 2 }}>{labelText}</Text>
+                  </View>
+                  <View style={{ width: 28, alignItems: "flex-end" }}>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: accent }}>{sc}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function QuestionnaireSection({
+  bundle,
+  questions,
+}: {
+  bundle: PatientQuestionnaireBundle;
+  questions: string[];
+}) {
+  const hasPre = !!bundle.pre;
+  const hasPost = !!bundle.post;
+
+  if (!hasPre && !hasPost) {
+    return (
+      <View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <Ionicons name="document-text" size={18} color="#8B7EC4" />
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E" }}>Kuesioner SMSES-BC</Text>
+        </View>
+        <View style={{ backgroundColor: "white", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#F0EAF5" }}>
+          <Text style={{ fontSize: 13, color: "#9B9BAE", textAlign: "center" }}>
+            Pasien belum mengisi kuesioner pre-test.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const preTotal = bundle.pre ? scoreStats(bundle.pre).total : null;
+  const postTotal = bundle.post ? scoreStats(bundle.post).total : null;
+  const delta = preTotal !== null && postTotal !== null ? postTotal - preTotal : null;
+  const deltaColor = delta === null ? "#9B9BAE" : delta > 0 ? "#6BAF8F" : delta < 0 ? "#E85858" : "#9B9BAE";
+  const deltaArrow = delta === null ? "" : delta > 0 ? "↑" : delta < 0 ? "↓" : "—";
+
+  return (
+    <View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <Ionicons name="document-text" size={18} color="#8B7EC4" />
+        <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E" }}>Kuesioner SMSES-BC</Text>
+        {delta !== null && (
+          <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: deltaColor + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: deltaColor }}>
+              {deltaArrow} {delta > 0 ? "+" : ""}{delta}
+            </Text>
+          </View>
+        )}
+      </View>
+      <View style={{ gap: 10 }}>
+        {bundle.pre && (
+          <QuestionnaireCard submission={bundle.pre} label="Pre-test" accent="#8B7EC4" questions={questions} />
+        )}
+        {bundle.post ? (
+          <QuestionnaireCard submission={bundle.post} label="Post-test" accent="#6BAF8F" questions={questions} />
+        ) : (
+          <View style={{ backgroundColor: "white", borderRadius: 14, padding: 14, borderWidth: 1, borderStyle: "dashed", borderColor: "#D0D0D8", flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Ionicons name="time-outline" size={16} color="#9B9BAE" />
+            <Text style={{ fontSize: 12, color: "#9B9BAE", flex: 1 }}>
+              Post-test belum diisi. Pasien dapat mengisi setelah seluruh 15 sesi disetujui.
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 const MOODS = ["😢", "😟", "😐", "🙂", "😊"];
 const MOOD_LABELS = ["Sangat Berat", "Berat", "Biasa Saja", "Cukup Baik", "Sangat Baik"];
@@ -12,12 +191,22 @@ const MOOD_LABELS = ["Sangat Berat", "Berat", "Biasa Saja", "Cukup Baik", "Sanga
 function ApprovalCard({ session, sessionDefs, onApprove }: {
   session: any;
   sessionDefs: { day: number; title: string }[];
-  onApprove: (day: number, status: "disetujui" | "ditolak", note: string) => void;
+  onApprove: (day: number, status: "disetujui" | "ditolak", note: string) => Promise<{ success: boolean; error?: string }>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const handleDecision = async (status: "disetujui" | "ditolak", decisionNote: string) => {
+    if (busy) return;
+    setBusy(true);
+    const res = await onApprove(session.day, status, decisionNote);
+    setBusy(false);
+    if (res.success) setSubmitted(true);
+    else Alert.alert("Gagal Memproses", res.error ?? "Terjadi kesalahan");
+  };
   const def = sessionDefs.find((s) => s.day === session.day);
   const reflectionText =
     typeof session?.reflection === "string" && session.reflection.trim()
@@ -74,15 +263,17 @@ function ApprovalCard({ session, sessionDefs, onApprove }: {
           {!rejectMode ? (
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
-                onPress={() => { onApprove(session.day, "disetujui", ""); setSubmitted(true); }}
-                style={{ flex: 1, backgroundColor: "#6BAF8F", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                onPress={() => handleDecision("disetujui", "")}
+                disabled={busy}
+                style={{ flex: 1, backgroundColor: busy ? "#B5D6C5" : "#6BAF8F", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
                 activeOpacity={0.8}
               >
                 <Ionicons name="checkmark-circle" size={16} color="white" />
-                <Text style={{ color: "white", fontWeight: "700" }}>Setujui</Text>
+                <Text style={{ color: "white", fontWeight: "700" }}>{busy ? "Memproses..." : "Setujui"}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setRejectMode(true)}
+                disabled={busy}
                 style={{ flex: 1, backgroundColor: "#FFF0F0", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: "#F0C8C8" }}
                 activeOpacity={0.8}
               >
@@ -111,11 +302,12 @@ function ApprovalCard({ session, sessionDefs, onApprove }: {
                   <Text style={{ color: "#6B6B80", fontWeight: "600" }}>Batal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => { onApprove(session.day, "ditolak", note); setSubmitted(true); }}
-                  style={{ flex: 1, backgroundColor: "#E85858", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
+                  onPress={() => handleDecision("ditolak", note)}
+                  disabled={busy}
+                  style={{ flex: 1, backgroundColor: busy ? "#F0A8A8" : "#E85858", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ color: "white", fontWeight: "700" }}>Kirim Penolakan</Text>
+                  <Text style={{ color: "white", fontWeight: "700" }}>{busy ? "Memproses..." : "Kirim Penolakan"}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -130,11 +322,13 @@ export default function NursePatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getPatientById, getPatientSessions, approveSession, getProgramSessions } = useApp();
+  const { getPatientById, getPatientSessions, approveSession, getProgramSessions, getQuestionnaireBundle, getQuestionnaireQuestions } = useApp();
   const sessions = getProgramSessions();
+  const questionnaireQuestions = getQuestionnaireQuestions();
 
   const patient = getPatientById(id ?? "") as Patient | undefined;
   const allSessions = getPatientSessions(id ?? "");
+  const questionnaireBundle = getQuestionnaireBundle(id ?? "");
 
   if (!patient) {
     return (
@@ -218,6 +412,9 @@ export default function NursePatientDetail() {
               </View>
             </View>
           )}
+
+          {/* Questionnaire results */}
+          <QuestionnaireSection bundle={questionnaireBundle} questions={questionnaireQuestions} />
 
           {/* Mood trend */}
           {moodData.length > 0 && (

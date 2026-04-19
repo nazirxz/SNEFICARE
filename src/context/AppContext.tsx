@@ -29,8 +29,8 @@ interface AppContextType {
   logout: () => Promise<void>;
   createPatient: (data: CreatePatientData) => Promise<{ success: boolean; error?: string }>;
   getPatientSessions: (patientId: string) => SessionRecord[];
-  completeSession: (patientId: string, record: SessionRecord) => void;
-  approveSession: (patientId: string, day: number, status: "disetujui" | "ditolak", note?: string) => void;
+  completeSession: (patientId: string, record: SessionRecord) => Promise<{ success: boolean; error?: string }>;
+  approveSession: (patientId: string, day: number, status: "disetujui" | "ditolak", note?: string) => Promise<{ success: boolean; error?: string }>;
   getEffectiveCurrentDay: (patientId: string) => number;
   getPendingApprovals: () => PendingApproval[];
   getAllPatients: () => Patient[];
@@ -38,7 +38,7 @@ interface AppContextType {
   getProgramSessions: () => SessionDefinition[];
   getQuestionnaireQuestions: () => string[];
   getQuestionnaireBundle: (patientId: string) => PatientQuestionnaireBundle;
-  saveQuestionnaireSubmission: (patientId: string, submission: QuestionnaireSubmission) => void;
+  saveQuestionnaireSubmission: (patientId: string, submission: QuestionnaireSubmission) => Promise<{ success: boolean; error?: string }>;
   getRelaxationTracks: () => RelaxationTrack[];
 }
 
@@ -447,8 +447,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return sessionsByPatient[patientId] ?? [];
   }, [sessionsByPatient]);
 
-  const completeSession = useCallback((patientId: string, record: SessionRecord) => {
-    (async () => {
+  const completeSession = useCallback(async (patientId: string, record: SessionRecord): Promise<{ success: boolean; error?: string }> => {
+    try {
       const payload = {
         patient_id: patientId,
         day: record.day,
@@ -467,7 +467,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .upsert(payload, { onConflict: "patient_id,day" })
         .select("id")
         .single();
-      if (sessionError) throw new Error(sessionError.message);
+      if (sessionError) return { success: false, error: sessionError.message };
 
       const answers = Object.entries(record.refleksiAnswers ?? {})
         .filter(([, text]) => text.trim() !== "")
@@ -480,7 +480,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const { error: answerError } = await supabase
           .from("reflection_answers")
           .upsert(answers, { onConflict: "session_id,question_id" });
-        if (answerError) throw new Error(answerError.message);
+        if (answerError) return { success: false, error: answerError.message };
       }
 
       const finalRecord: SessionRecord = { ...record, approvalStatus: "menunggu" };
@@ -492,13 +492,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         list.sort((a, b) => a.day - b.day);
         return { ...prev, [patientId]: list };
       });
-    })().catch((err) => {
-      console.warn("Gagal menyimpan sesi:", err);
-    });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal menyimpan sesi" };
+    }
   }, []);
 
-  const approveSession = useCallback((patientId: string, day: number, status: "disetujui" | "ditolak", note?: string) => {
-    (async () => {
+  const approveSession = useCallback(async (patientId: string, day: number, status: "disetujui" | "ditolak", note?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
       const approvedAt = status === "disetujui" ? new Date().toISOString() : null;
       const { error: updateError } = await supabase
         .from("session_records")
@@ -510,7 +511,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
         .eq("patient_id", patientId)
         .eq("day", day);
-      if (updateError) throw new Error(updateError.message);
+      if (updateError) return { success: false, error: updateError.message };
 
       setSessionsByPatient((prev) => {
         const list = [...(prev[patientId] ?? [])];
@@ -542,11 +543,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .from("patients")
           .update({ current_day: newDay })
           .eq("id", patientId);
-        if (dayError) throw new Error(dayError.message);
+        if (dayError) return { success: false, error: dayError.message };
       }
-    })().catch((err) => {
-      console.warn("Gagal memproses approval sesi:", err);
-    });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal memproses approval sesi" };
+    }
   }, [currentUser?.id, patientsState, userRole]);
 
   const getEffectiveCurrentDay = useCallback((patientId: string): number => {
@@ -575,8 +577,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [questionnairesByPatient]
   );
 
-  const saveQuestionnaireSubmission = useCallback((patientId: string, submission: QuestionnaireSubmission) => {
-    (async () => {
+  const saveQuestionnaireSubmission = useCallback(async (patientId: string, submission: QuestionnaireSubmission): Promise<{ success: boolean; error?: string }> => {
+    try {
       const { error } = await supabase
         .from("questionnaire_submissions")
         .upsert(
@@ -596,16 +598,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
           { onConflict: "patient_id,phase" }
         );
-      if (error) throw new Error(error.message);
+      if (error) return { success: false, error: error.message };
 
       setQuestionnairesByPatient((prev) => {
         const cur = prev[patientId] ?? {};
         const nextBundle: PatientQuestionnaireBundle = { ...cur, [submission.phase]: submission };
         return { ...prev, [patientId]: nextBundle };
       });
-    })().catch((err) => {
-      console.warn("Gagal menyimpan kuesioner:", err);
-    });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal menyimpan kuesioner" };
+    }
   }, []);
 
   return (

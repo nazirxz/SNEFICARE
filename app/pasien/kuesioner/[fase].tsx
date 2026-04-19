@@ -68,18 +68,30 @@ export default function PatientResearchQuestionnaire() {
     });
   };
 
-  const handleSubmit = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     const validScores = scores.map((s) => s ?? 0);
     if (!isValidScores(validScores)) {
       Alert.alert("Belum lengkap", "Mohon isi semua pertanyaan kuesioner.");
       return;
     }
-    saveQuestionnaireSubmission(patient.id, {
+    if (submitting) return;
+    setSubmitting(true);
+    const result = await saveQuestionnaireSubmission(patient.id, {
       phase,
       demographics,
       scores: validScores,
       submittedAt: new Date().toISOString(),
     });
+    setSubmitting(false);
+    if (!result.success) {
+      Alert.alert(
+        "Gagal Menyimpan",
+        `Kuesioner belum tersimpan.\n\nDetail: ${result.error ?? "tidak diketahui"}`,
+      );
+      return;
+    }
     Alert.alert("Terima Kasih!", "Kuesioner berhasil disimpan.", [
       { text: "OK", onPress: () => router.replace("/pasien") },
     ]);
