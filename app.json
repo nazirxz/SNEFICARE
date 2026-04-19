@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "HealthcareApp-Android",
-    "slug": "HealthcareApp-Android",
+    "name": "SNEfi Care",
+    "slug": "sneficare",
+    "owner": "sneficare",
     "scheme": "healthcareapp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -43,6 +44,11 @@
           "microphonePermission": "Izinkan SNEfi Care mengakses mikrofon untuk merekam afirmasi suara Anda."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ff0459cd-6796-4c25-8f1f-81f85ea5f7a7"
+      }
+    }
   }
 }
