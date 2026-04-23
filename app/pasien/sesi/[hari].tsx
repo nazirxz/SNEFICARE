@@ -104,17 +104,21 @@ function MusicPlayer({
 
   useEffect(() => {
     if (!playing || !ready || finished) return;
-    const interval = setInterval(async () => {
-      try {
-        const t = await playerRef.current?.getCurrentTime();
-        if (typeof t !== "number") return;
-        setElapsedSec(t);
-        if (t >= MAX_PLAY_SEC) {
+    let last = Date.now();
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const delta = (now - last) / 1000;
+      last = now;
+      setElapsedSec((prev) => {
+        const next = prev + delta;
+        if (next >= MAX_PLAY_SEC) {
           setPlaying(false);
           setFinished(true);
           onFinish?.();
+          return MAX_PLAY_SEC;
         }
-      } catch {}
+        return next;
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, [playing, ready, finished, onFinish]);
@@ -167,7 +171,7 @@ function MusicPlayer({
         </View>
       </ScrollView>
 
-      {/* YouTube iframe */}
+      {/* YouTube iframe — controls disabled, touch overlay blocks seek */}
       <View style={{ borderRadius: 14, overflow: "hidden", backgroundColor: "#0A0A0A", position: "relative" }}>
         {selectedTrack ? (
           <YoutubePlayer
@@ -181,13 +185,19 @@ function MusicPlayer({
             onError={onError}
             webViewProps={{ androidLayerType: "hardware" }}
             initialPlayerParams={{
-              controls: true,
+              controls: false,
               modestbranding: true,
               rel: false,
               iv_load_policy: 3,
+              preventFullScreen: true,
             }}
           />
         ) : null}
+        <View
+          pointerEvents="box-only"
+          onStartShouldSetResponder={() => true}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
         {!ready && !errorMsg && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
             <ActivityIndicator color="white" />
@@ -680,7 +690,7 @@ export default function PatientSession() {
   const [edukasiRead, setEdukasiRead] = useState(false);
   const [musikListened, setMusikListened] = useState(false);
   const [mood, setMood] = useState<number | null>(null);
-  const [reflection, setReflection] = useState("");
+  const [reflection, setReflection] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingModule, setSubmittingModule] = useState<string | null>(null);
@@ -782,7 +792,12 @@ export default function PatientSession() {
       completedAt: new Date().toISOString(),
       durationMinutes,
       mood,
-      refleksiAnswers: reflection ? { q1: reflection } : undefined,
+      refleksiAnswers: (() => {
+        const filled = Object.fromEntries(
+          Object.entries(reflection).filter(([, v]) => v.trim().length > 0),
+        );
+        return Object.keys(filled).length > 0 ? filled : undefined;
+      })(),
     });
     setSubmitting(false);
     if (!result.success) {
@@ -974,8 +989,8 @@ export default function PatientSession() {
                 <View key={q.id} style={{ gap: 6 }}>
                   <Text style={{ fontSize: 13, color: "#6B6B80" }}>{i + 1}. {q.label}</Text>
                   <TextInput
-                    value={reflection}
-                    onChangeText={setReflection}
+                    value={reflection[q.id] ?? ""}
+                    onChangeText={(text) => setReflection((prev) => ({ ...prev, [q.id]: text }))}
                     placeholder={q.placeholder}
                     placeholderTextColor="#C0B8CC"
                     multiline

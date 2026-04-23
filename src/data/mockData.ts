@@ -855,4 +855,5 @@ export const patients: Patient[] = [
 export const nurses: Nurse[] = [
   { id: "n001", name: "Ns. Kartini Dewi, S.Kep", nip: "198504152010012001", department: "Onkologi", username: "ns.kartini", password: "kartini123" },
   { id: "n002", name: "Ns. Budi Santoso, S.Kep", nip: "198801202011011002", department: "Onkologi", username: "ns.budi", password: "budi123" },
+  { id: "n003", name: "Ns. Siti Nurdiyanah, S.Kep", nip: "199003122015032001", department: "Onkologi", username: "ns.siti", password: "siti386" },
 ];
