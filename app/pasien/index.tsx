@@ -45,6 +45,10 @@ export default function PatientDashboard() {
   const todayRecord = allSessions.find((s) => s.day === todayDay);
   const isTodayCompleted = todayRecord?.status === "selesai";
   const todayApproval = todayRecord?.approvalStatus;
+  const todayMusikModule = todayRecord?.moduleApprovals?.musik;
+  const todayAfirmasiModule = todayRecord?.moduleApprovals?.afirmasi;
+  const hasPendingModule = !isTodayCompleted && (todayMusikModule?.status === "menunggu" || todayAfirmasiModule?.status === "menunggu");
+  const hasRejectedModule = !isTodayCompleted && (todayMusikModule?.status === "ditolak" || todayAfirmasiModule?.status === "ditolak");
   const recentCompleted = allSessions
     .filter((s) => s.status === "selesai" && s.approvalStatus === "disetujui")
     .slice(-3)
@@ -292,15 +296,39 @@ export default function PatientDashboard() {
                     </View>
                   )}
                   {!isTodayCompleted && (
-                    <TouchableOpacity
-                      onPress={() => router.push(needsPreTest ? "/pasien/kuesioner/pre" : `/pasien/sesi/${todayDay}` as any)}
-                      style={{ backgroundColor: todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
-                        {needsPreTest ? "Isi kuesioner pra dulu →" : "Mulai Sesi Hari Ini →"}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={{ gap: 10 }}>
+                      {hasPendingModule && (
+                        <View style={{ backgroundColor: "#FFF8E8", borderRadius: 12, padding: 12, flexDirection: "row", gap: 10 }}>
+                          <Ionicons name="hourglass" size={18} color="#C49A40" />
+                          <Text style={{ flex: 1, fontSize: 12, color: "#8A6A20", lineHeight: 18 }}>
+                            Ada modul yang menunggu persetujuan perawat. Buka sesi untuk memeriksa.
+                          </Text>
+                        </View>
+                      )}
+                      {hasRejectedModule && (
+                        <View style={{ backgroundColor: "#FFF0F0", borderRadius: 12, padding: 12, flexDirection: "row", gap: 10 }}>
+                          <Ionicons name="alert-circle" size={18} color="#C85858" />
+                          <Text style={{ flex: 1, fontSize: 12, color: "#8A3838", lineHeight: 18 }}>
+                            Perawat meminta modul diulang. Buka sesi untuk melihat catatan.
+                          </Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => router.push(needsPreTest ? "/pasien/kuesioner/pre" : `/pasien/sesi/${todayDay}` as any)}
+                        style={{ backgroundColor: todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
+                          {needsPreTest
+                            ? "Isi kuesioner pra dulu →"
+                            : hasPendingModule
+                              ? "Lihat Status Sesi →"
+                              : hasRejectedModule
+                                ? "Perbaiki Sesi Hari Ini →"
+                                : "Mulai Sesi Hari Ini →"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
               </View>

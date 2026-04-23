@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { File } from "expo-file-system";
 import { supabase, createEphemeralAuthClient } from "../lib/supabase";
 import type { PatientQuestionnaireBundle, QuestionnaireSubmission } from "../data/researchQuestionnaire";
-import type { Patient, Nurse, SessionDefinition, SessionRecord, RelaxationTrack } from "../types/domain";
+import type { Patient, Nurse, SessionDefinition, SessionRecord, RelaxationTrack, ApprovalModuleId, ModuleApproval } from "../types/domain";
 
 const AFIRMASI_BUCKET = "affirmation-recordings";
 
@@ -24,6 +24,18 @@ export interface PendingApproval {
   session: SessionRecord;
 }
 
+export interface PendingModuleApproval {
+  patient: Patient;
+  session: SessionRecord;
+  moduleId: ApprovalModuleId;
+}
+
+export interface SubmitModulePayload {
+  moduleId: ApprovalModuleId;
+  durationMinutes?: number;
+  affirmationAudioPath?: string;
+}
+
 interface AppContextType {
   currentUser: Patient | Nurse | null;
   userRole: UserRole | null;
@@ -34,8 +46,12 @@ interface AppContextType {
   getPatientSessions: (patientId: string) => SessionRecord[];
   completeSession: (patientId: string, record: SessionRecord) => Promise<{ success: boolean; error?: string }>;
   approveSession: (patientId: string, day: number, status: "disetujui" | "ditolak", note?: string) => Promise<{ success: boolean; error?: string }>;
+  submitModule: (patientId: string, day: number, payload: SubmitModulePayload) => Promise<{ success: boolean; error?: string }>;
+  approveModule: (patientId: string, day: number, moduleId: ApprovalModuleId, status: "disetujui" | "ditolak", note?: string) => Promise<{ success: boolean; error?: string }>;
+  refreshSessions: () => Promise<{ success: boolean; error?: string }>;
   getEffectiveCurrentDay: (patientId: string) => number;
   getPendingApprovals: () => PendingApproval[];
+  getPendingModuleApprovals: () => PendingModuleApproval[];
   getAllPatients: () => Patient[];
   getPatientById: (id: string) => Patient | undefined;
   getProgramSessions: () => SessionDefinition[];
@@ -204,6 +220,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     patientIds.forEach((id) => { map[id] = []; });
 
     rows.forEach((r: any) => {
+      const rawApprovals = (r.module_approvals && typeof r.module_approvals === "object") ? r.module_approvals : {};
+      const moduleApprovals: Partial<Record<ApprovalModuleId, ModuleApproval>> = {};
+      (["musik", "afirmasi"] as ApprovalModuleId[]).forEach((k) => {
+        const v = rawApprovals[k];
+        if (v && typeof v === "object" && typeof v.status === "string") {
+          moduleApprovals[k] = {
+            status: v.status,
+            submittedAt: v.submitted_at ?? undefined,
+            approvedAt: v.approved_at ?? undefined,
+            approvedBy: v.approved_by ?? undefined,
+            note: v.note ?? undefined,
+          };
+        }
+      });
+
       const item: SessionRecord = {
         day: r.day,
         status: r.status,
@@ -217,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         afirmasiNote: r.affirmation_note ?? undefined,
         affirmationAudioUrl: r.affirmation_audio_path ?? undefined,
         refleksiAnswers: answerBySession[r.id] ?? undefined,
+        moduleApprovals: Object.keys(moduleApprovals).length > 0 ? moduleApprovals : undefined,
       };
       if (!map[r.patient_id]) map[r.patient_id] = [];
       map[r.patient_id].push(item);
@@ -453,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const completeSession = useCallback(async (patientId: string, record: SessionRecord): Promise<{ success: boolean; error?: string }> => {
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         patient_id: patientId,
         day: record.day,
         status: record.status,
@@ -463,8 +495,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mood: record.mood ?? null,
         modules_completed: record.modulesCompleted ?? null,
         affirmation_note: record.afirmasiNote ?? null,
-        affirmation_audio_path: record.affirmationAudioUrl ?? null,
       };
+      if (record.affirmationAudioUrl !== undefined) {
+        payload.affirmation_audio_path = record.affirmationAudioUrl;
+      }
 
       const { data: sessionRow, error: sessionError } = await supabase
         .from("session_records")
@@ -487,10 +521,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (answerError) return { success: false, error: answerError.message };
       }
 
-      const finalRecord: SessionRecord = { ...record, approvalStatus: "menunggu" };
       setSessionsByPatient((prev) => {
         const list = [...(prev[patientId] ?? [])];
         const idx = list.findIndex((s) => s.day === record.day);
+        const existing = idx >= 0 ? list[idx] : undefined;
+        const finalRecord: SessionRecord = {
+          ...(existing ?? {}),
+          ...record,
+          approvalStatus: "menunggu",
+          approvalNote: undefined,
+          moduleApprovals: existing?.moduleApprovals,
+          affirmationAudioUrl: record.affirmationAudioUrl ?? existing?.affirmationAudioUrl,
+        };
         if (idx >= 0) list[idx] = finalRecord;
         else list.push(finalRecord);
         list.sort((a, b) => a.day - b.day);
@@ -571,6 +613,155 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return result;
   }, [getPatientSessions, patientsState]);
 
+  const getPendingModuleApprovals = useCallback((): PendingModuleApproval[] => {
+    const result: PendingModuleApproval[] = [];
+    patientsState.forEach((p) => {
+      const sessions = getPatientSessions(p.id);
+      sessions.forEach((s) => {
+        (["musik", "afirmasi"] as ApprovalModuleId[]).forEach((m) => {
+          if (s.moduleApprovals?.[m]?.status === "menunggu") {
+            result.push({ patient: p, session: s, moduleId: m });
+          }
+        });
+      });
+    });
+    return result;
+  }, [getPatientSessions, patientsState]);
+
+  const serializeModuleApprovals = (
+    approvals?: Partial<Record<ApprovalModuleId, ModuleApproval>>,
+  ): Record<string, any> => {
+    const out: Record<string, any> = {};
+    (["musik", "afirmasi"] as ApprovalModuleId[]).forEach((k) => {
+      const v = approvals?.[k];
+      if (!v) return;
+      out[k] = {
+        status: v.status,
+        submitted_at: v.submittedAt ?? null,
+        approved_at: v.approvedAt ?? null,
+        approved_by: v.approvedBy ?? null,
+        note: v.note ?? null,
+      };
+    });
+    return out;
+  };
+
+  const submitModule = useCallback(async (
+    patientId: string,
+    day: number,
+    payload: SubmitModulePayload,
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const existing = (sessionsByPatient[patientId] ?? []).find((s) => s.day === day);
+      const nextApprovals: Partial<Record<ApprovalModuleId, ModuleApproval>> = {
+        ...(existing?.moduleApprovals ?? {}),
+        [payload.moduleId]: {
+          status: "menunggu",
+          submittedAt: new Date().toISOString(),
+        },
+      };
+
+      const baseUpdate: Record<string, any> = {
+        patient_id: patientId,
+        day,
+        status: existing?.status === "selesai" ? existing.status : "berlangsung",
+        module_approvals: serializeModuleApprovals(nextApprovals),
+      };
+      if (payload.affirmationAudioPath !== undefined) {
+        baseUpdate.affirmation_audio_path = payload.affirmationAudioPath;
+      }
+      if (payload.durationMinutes !== undefined) {
+        baseUpdate.duration_minutes = Math.max(existing?.durationMinutes ?? 0, payload.durationMinutes);
+      }
+
+      const { error } = await supabase
+        .from("session_records")
+        .upsert(baseUpdate, { onConflict: "patient_id,day" });
+      if (error) return { success: false, error: error.message };
+
+      setSessionsByPatient((prev) => {
+        const list = [...(prev[patientId] ?? [])];
+        const idx = list.findIndex((s) => s.day === day);
+        const updated: SessionRecord = {
+          day,
+          status: existing?.status ?? "berlangsung",
+          ...(existing ?? {}),
+          moduleApprovals: nextApprovals,
+          affirmationAudioUrl: payload.affirmationAudioPath ?? existing?.affirmationAudioUrl,
+          durationMinutes: payload.durationMinutes !== undefined
+            ? Math.max(existing?.durationMinutes ?? 0, payload.durationMinutes)
+            : existing?.durationMinutes,
+        };
+        if (idx >= 0) list[idx] = updated;
+        else list.push(updated);
+        list.sort((a, b) => a.day - b.day);
+        return { ...prev, [patientId]: list };
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal menyimpan modul" };
+    }
+  }, [sessionsByPatient]);
+
+  const approveModule = useCallback(async (
+    patientId: string,
+    day: number,
+    moduleId: ApprovalModuleId,
+    status: "disetujui" | "ditolak",
+    note?: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const existing = (sessionsByPatient[patientId] ?? []).find((s) => s.day === day);
+      if (!existing?.moduleApprovals?.[moduleId]) {
+        return { success: false, error: "Modul belum disubmit pasien" };
+      }
+      const approvedAt = status === "disetujui" ? new Date().toISOString() : undefined;
+      const nextApprovals: Partial<Record<ApprovalModuleId, ModuleApproval>> = {
+        ...existing.moduleApprovals,
+        [moduleId]: {
+          ...existing.moduleApprovals[moduleId]!,
+          status,
+          approvedAt,
+          approvedBy: userRole === "perawat" ? currentUser?.id : undefined,
+          note: note ?? undefined,
+        },
+      };
+
+      const { error } = await supabase
+        .from("session_records")
+        .update({ module_approvals: serializeModuleApprovals(nextApprovals) })
+        .eq("patient_id", patientId)
+        .eq("day", day);
+      if (error) return { success: false, error: error.message };
+
+      setSessionsByPatient((prev) => {
+        const list = [...(prev[patientId] ?? [])];
+        const idx = list.findIndex((s) => s.day === day);
+        if (idx >= 0) list[idx] = { ...list[idx], moduleApprovals: nextApprovals };
+        return { ...prev, [patientId]: list };
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal memproses persetujuan modul" };
+    }
+  }, [currentUser?.id, sessionsByPatient, userRole]);
+
+  const refreshSessions = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const ids = patientsState.map((p) => p.id);
+      if (ids.length === 0) return { success: true };
+      const [sessionMap, questionnaireMap] = await Promise.all([
+        fetchSessionsMap(ids),
+        fetchQuestionnaireMap(ids),
+      ]);
+      setSessionsByPatient(sessionMap);
+      setQuestionnairesByPatient(questionnaireMap);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "Gagal memuat ulang sesi" };
+    }
+  }, [fetchQuestionnaireMap, fetchSessionsMap, patientsState]);
+
   const getRelaxationTracks = useCallback(() => relaxationTracks, [relaxationTracks]);
   const getAllPatients = useCallback(() => patientsState, [patientsState]);
   const getPatientById = useCallback((id: string) => patientsState.find((p) => p.id === id), [patientsState]);
@@ -649,7 +840,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       currentUser, userRole, isHydrating, login, logout, createPatient,
       getPatientSessions, completeSession, approveSession,
-      getEffectiveCurrentDay, getPendingApprovals,
+      submitModule, approveModule, refreshSessions,
+      getEffectiveCurrentDay, getPendingApprovals, getPendingModuleApprovals,
       getAllPatients, getPatientById,
       getProgramSessions, getQuestionnaireQuestions,
       getQuestionnaireBundle, saveQuestionnaireSubmission,

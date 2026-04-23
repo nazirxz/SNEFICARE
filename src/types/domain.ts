@@ -50,6 +50,16 @@ export interface SessionDefinition {
   };
 }
 
+export type ApprovalModuleId = "musik" | "afirmasi";
+
+export interface ModuleApproval {
+  status: "menunggu" | "disetujui" | "ditolak";
+  submittedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  note?: string;
+}
+
 export interface SessionRecord {
   day: number;
   status: "belum" | "berlangsung" | "selesai";
@@ -63,6 +73,7 @@ export interface SessionRecord {
   afirmasiNote?: string;
   modulesCompleted?: string[];
   affirmationAudioUrl?: string;
+  moduleApprovals?: Partial<Record<ApprovalModuleId, ModuleApproval>>;
 }
 
 export interface Patient {

@@ -70,10 +70,55 @@ export default function PatientResearchQuestionnaire() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const DEMO_FIELDS: { key: keyof QuestionnaireDemographics; label: string }[] = [
+    { key: "initials", label: "Inisial Nama" },
+    { key: "age", label: "Usia" },
+    { key: "sex", label: "Jenis Kelamin" },
+    { key: "education", label: "Pendidikan Terakhir" },
+    { key: "occupation", label: "Pekerjaan" },
+    { key: "religion", label: "Agama" },
+    { key: "ethnicity", label: "Suku" },
+  ];
+
+  const missingDemoLabels = DEMO_FIELDS
+    .filter(({ key }) => !String(demographics[key] ?? "").trim())
+    .map((f) => f.label);
+  const missingScoreIndexes = scores
+    .map((s, i) => (s === null || s === undefined ? i + 1 : null))
+    .filter((x): x is number => x !== null);
+
+  const handleContinueToQuestions = () => {
+    if (missingDemoLabels.length > 0) {
+      Alert.alert(
+        "Data Diri Belum Lengkap",
+        `Mohon isi semua kolom data diri:\n- ${missingDemoLabels.join("\n- ")}`,
+      );
+      return;
+    }
+    setStep("questions");
+  };
+
   const handleSubmit = async () => {
-    const validScores = scores.map((s) => s ?? 0);
-    if (!isValidScores(validScores)) {
-      Alert.alert("Belum lengkap", "Mohon isi semua pertanyaan kuesioner.");
+    if (missingDemoLabels.length > 0) {
+      Alert.alert(
+        "Data Diri Belum Lengkap",
+        `Kembali ke halaman data diri dan lengkapi:\n- ${missingDemoLabels.join("\n- ")}`,
+      );
+      setStep("demo");
+      return;
+    }
+    if (missingScoreIndexes.length > 0) {
+      const preview = missingScoreIndexes.slice(0, 5).join(", ");
+      const more = missingScoreIndexes.length > 5 ? ` (+${missingScoreIndexes.length - 5} lainnya)` : "";
+      Alert.alert(
+        "Belum Lengkap",
+        `Mohon jawab semua ${SMSES_BC_ITEM_COUNT} pertanyaan.\n\nBelum dijawab: nomor ${preview}${more}.`,
+      );
+      return;
+    }
+    const finalScores = scores.map((s) => s as number);
+    if (!isValidScores(finalScores)) {
+      Alert.alert("Data Tidak Valid", "Jawaban kuesioner tidak valid. Mohon periksa kembali.");
       return;
     }
     if (submitting) return;
@@ -81,7 +126,7 @@ export default function PatientResearchQuestionnaire() {
     const result = await saveQuestionnaireSubmission(patient.id, {
       phase,
       demographics,
-      scores: validScores,
+      scores: finalScores,
       submittedAt: new Date().toISOString(),
     });
     setSubmitting(false);
@@ -142,24 +187,40 @@ export default function PatientResearchQuestionnaire() {
               { key: "occupation", label: "Pekerjaan", placeholder: "Contoh: Ibu Rumah Tangga" },
               { key: "religion", label: "Agama", placeholder: "Contoh: Islam" },
               { key: "ethnicity", label: "Suku", placeholder: "Contoh: Jawa" },
-            ].map(({ key, label, placeholder }) => (
-              <View key={key} style={{ gap: 6 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#6B6B80" }}>{label}</Text>
-                <TextInput
-                  value={(demographics as any)[key]}
-                  onChangeText={(v) => setDemographics((d) => ({ ...d, [key]: v }))}
-                  placeholder={placeholder}
-                  placeholderTextColor="#C0B8CC"
-                  style={{ backgroundColor: "white", borderWidth: 2, borderColor: "#F0E8E0", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#2D2D3E" }}
-                />
-              </View>
-            ))}
+            ].map(({ key, label, placeholder }) => {
+              const empty = !String((demographics as any)[key] ?? "").trim();
+              return (
+                <View key={key} style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#6B6B80" }}>
+                    {label} <Text style={{ color: "#C85858" }}>*</Text>
+                  </Text>
+                  <TextInput
+                    value={(demographics as any)[key]}
+                    onChangeText={(v) => setDemographics((d) => ({ ...d, [key]: v }))}
+                    placeholder={placeholder}
+                    placeholderTextColor="#C0B8CC"
+                    style={{ backgroundColor: "white", borderWidth: 2, borderColor: empty ? "#F0E8E0" : "#D4D0B8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#2D2D3E" }}
+                  />
+                </View>
+              );
+            })}
             <TouchableOpacity
-              onPress={() => setStep("questions")}
-              style={{ backgroundColor: "#C49A40", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 8 }}
+              onPress={handleContinueToQuestions}
+              disabled={missingDemoLabels.length > 0}
+              style={{
+                backgroundColor: missingDemoLabels.length > 0 ? "#E0D8C0" : "#C49A40",
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                marginTop: 8,
+              }}
               activeOpacity={0.8}
             >
-              <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>Lanjut ke Kuesioner →</Text>
+              <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
+                {missingDemoLabels.length > 0
+                  ? `Lengkapi ${missingDemoLabels.length} kolom lagi`
+                  : "Lanjut ke Kuesioner →"}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -206,12 +267,38 @@ export default function PatientResearchQuestionnaire() {
               </View>
             ))}
 
+            <View style={{ backgroundColor: missingScoreIndexes.length === 0 ? "#E8F5EE" : "#FFF8E8", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons
+                name={missingScoreIndexes.length === 0 ? "checkmark-circle" : "alert-circle"}
+                size={16}
+                color={missingScoreIndexes.length === 0 ? "#6BAF8F" : "#C49A40"}
+              />
+              <Text style={{ flex: 1, fontSize: 12, color: missingScoreIndexes.length === 0 ? "#3A7A5A" : "#8A6A20", fontWeight: "600" }}>
+                {missingScoreIndexes.length === 0
+                  ? `Semua ${SMSES_BC_ITEM_COUNT} pertanyaan telah dijawab.`
+                  : `${scores.length - missingScoreIndexes.length}/${SMSES_BC_ITEM_COUNT} dijawab · ${missingScoreIndexes.length} belum`}
+              </Text>
+            </View>
+
             <TouchableOpacity
               onPress={handleSubmit}
-              style={{ backgroundColor: "#C49A40", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginTop: 8 }}
+              disabled={submitting || missingScoreIndexes.length > 0}
+              style={{
+                backgroundColor: submitting || missingScoreIndexes.length > 0 ? "#E0D8C0" : "#C49A40",
+                borderRadius: 16,
+                paddingVertical: 16,
+                alignItems: "center",
+                marginTop: 8,
+              }}
               activeOpacity={0.8}
             >
-              <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>Kirim Kuesioner ✓</Text>
+              <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>
+                {submitting
+                  ? "Menyimpan..."
+                  : missingScoreIndexes.length > 0
+                    ? `Lengkapi ${missingScoreIndexes.length} pertanyaan lagi`
+                    : "Kirim Kuesioner ✓"}
+              </Text>
             </TouchableOpacity>
             <View style={{ height: 32 }} />
           </View>

@@ -66,5 +66,5 @@ export function createEmptyScoreState(): (number | null)[] {
 
 export function isValidScores(scores: number[]): boolean {
   if (scores.length !== SMSES_BC_ITEM_COUNT) return false;
-  return scores.every((s) => Number.isFinite(s) && s >= 0 && s <= 10 && Math.round(s) === s);
+  return scores.every((s) => Number.isFinite(s) && s >= 1 && s <= 5 && Math.round(s) === s);
 }

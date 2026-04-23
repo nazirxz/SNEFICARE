@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.session_records (
   modules_completed       TEXT[],
   affirmation_note        TEXT,
   affirmation_audio_path  TEXT,
+  module_approvals        JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at              TIMESTAMPTZ DEFAULT NOW(),
   updated_at              TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(patient_id, day)

@@ -1,7 +1,9 @@
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, Alert } from "react-native";
+import { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
+import { exportQuestionnairesToExcel } from "../../src/lib/exportQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MOODS = ["😢", "😟", "😐", "🙂", "😊"];
@@ -21,9 +23,29 @@ function AdherenceBar({ pct }: { pct: number }) {
 export default function NurseDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getAllPatients, getPatientSessions, getPendingApprovals, logout, getProgramSessions } = useApp();
+  const { getAllPatients, getPatientSessions, getPendingApprovals, getPendingModuleApprovals, logout, getProgramSessions, getQuestionnaireBundle, getQuestionnaireQuestions } = useApp();
   const patients = getAllPatients();
   const sessions = getProgramSessions();
+  const [exporting, setExporting] = useState(false);
+
+  const bundles = Object.fromEntries(patients.map((p) => [p.id, getQuestionnaireBundle(p.id)]));
+  const hasAnyQuestionnaire = patients.some((p) => bundles[p.id]?.pre || bundles[p.id]?.post);
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    const res = await exportQuestionnairesToExcel({
+      patients,
+      bundles,
+      questions: getQuestionnaireQuestions(),
+    });
+    setExporting(false);
+    if (!res.success) {
+      Alert.alert("Gagal Ekspor", res.error ?? "Terjadi kesalahan");
+    }
+  };
+
+  const pendingModuleApprovals = getPendingModuleApprovals();
 
   const patientStats = patients.map((p) => {
     const sess = getPatientSessions(p.id);
@@ -32,7 +54,9 @@ export default function NurseDashboard() {
     const todayDone = sess.find((s) => s.day === p.currentDay)?.status === "selesai";
     const lastMood = completed.length > 0 ? completed[completed.length - 1]?.mood : null;
     const totalDur = completed.reduce((a, s) => a + (s.durationMinutes ?? 0), 0);
-    const pendingCount = sess.filter((s) => s.approvalStatus === "menunggu").length;
+    const pendingSessionCount = sess.filter((s) => s.approvalStatus === "menunggu").length;
+    const pendingModuleCount = pendingModuleApprovals.filter((m) => m.patient.id === p.id).length;
+    const pendingCount = pendingSessionCount + pendingModuleCount;
     return { ...p, completed: completed.length, adherence, todayDone, lastMood, totalDur, pendingCount };
   });
 
@@ -43,7 +67,7 @@ export default function NurseDashboard() {
       : 0;
   const todayActive = patientStats.filter((p) => p.todayDone).length;
   const pendingApprovals = getPendingApprovals();
-  const totalPending = pendingApprovals.length;
+  const totalPending = pendingApprovals.length + pendingModuleApprovals.length;
   const today = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const hasLowAdherence = patientStats.some((p) => p.adherence < 50);
 
@@ -96,6 +120,39 @@ export default function NurseDashboard() {
             </Text>
           </TouchableOpacity>
 
+          {/* Export Excel */}
+          {hasAnyQuestionnaire && (
+            <TouchableOpacity
+              onPress={handleExport}
+              disabled={exporting}
+              style={{
+                backgroundColor: exporting ? "#A7C9B7" : "#6BAF8F",
+                borderRadius: 16,
+                paddingVertical: 14,
+                paddingHorizontal: 20,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                shadowColor: "#6BAF8F",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+              activeOpacity={0.8}
+            >
+              {exporting ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Ionicons name="download" size={20} color="white" />
+              )}
+              <Text style={{ color: "white", fontSize: 15, fontWeight: "700" }}>
+                {exporting ? "Menyiapkan file..." : "Ekspor Hasil Kuesioner (Excel)"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Stats grid */}
           <View>
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E", marginBottom: 12 }}>Ringkasan Hari Ini</Text>
@@ -125,18 +182,48 @@ export default function NurseDashboard() {
                   <Ionicons name="notifications" size={18} color="#C49A40" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#8A6A20" }}>{totalPending} sesi menunggu persetujuanmu</Text>
-                  <Text style={{ fontSize: 12, color: "#B09040", marginTop: 2 }}>Tinjau untuk mengizinkan pasien lanjut</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#8A6A20" }}>{totalPending} menunggu persetujuanmu</Text>
+                  <Text style={{ fontSize: 12, color: "#B09040", marginTop: 2 }}>
+                    {pendingModuleApprovals.length > 0 ? `${pendingModuleApprovals.length} modul + ` : ""}
+                    {pendingApprovals.length} sesi
+                  </Text>
                 </View>
                 <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#C49A40", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 13, fontWeight: "800", color: "white" }}>{totalPending}</Text>
                 </View>
               </View>
-              {pendingApprovals.slice(0, 3).map(({ patient, session }) => {
+              {pendingModuleApprovals.slice(0, 3).map(({ patient, session, moduleId }) => {
+                const def = sessions.find((s) => s.day === session.day);
+                const label = moduleId === "musik" ? "Musik Terapi" : "Afirmasi";
+                return (
+                  <TouchableOpacity
+                    key={`mod-${patient.id}-${session.day}-${moduleId}`}
+                    onPress={() => router.push(`/perawat/pasien/${patient.id}` as any)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#FAF8FF" }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: moduleId === "musik" ? "#EEE9F9" : "#E8F5EE", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons
+                        name={moduleId === "musik" ? "musical-notes" : "mic"}
+                        size={14}
+                        color={moduleId === "musik" ? "#8B7EC4" : "#6BAF8F"}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: "#2D2D3E" }}>{patient.name}</Text>
+                      <Text style={{ fontSize: 11, color: "#9B9BAE" }}>Hari {session.day} · Modul {label}</Text>
+                    </View>
+                    <View style={{ backgroundColor: "#FFF3D0", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: "#8A6A20" }}>Tinjau</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              {pendingApprovals.slice(0, Math.max(0, 3 - pendingModuleApprovals.length)).map(({ patient, session }) => {
                 const def = sessions.find((s) => s.day === session.day);
                 return (
                   <TouchableOpacity
-                    key={`${patient.id}-${session.day}`}
+                    key={`ses-${patient.id}-${session.day}`}
                     onPress={() => router.push(`/perawat/pasien/${patient.id}` as any)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#FAF8FF" }}
                     activeOpacity={0.8}

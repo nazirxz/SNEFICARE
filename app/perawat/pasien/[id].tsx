@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useApp } from "../../../src/context/AppContext";
-import type { Patient } from "../../../src/types/domain";
+import type { Patient, ApprovalModuleId, SessionRecord } from "../../../src/types/domain";
 import type { QuestionnaireSubmission, PatientQuestionnaireBundle } from "../../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -85,6 +85,145 @@ function AfirmasiAudioPlayer({ storagePath }: { storagePath: string }) {
         </View>
       )}
       {error && <Text style={{ fontSize: 11, color: "#8B2E37" }}>{error}</Text>}
+    </View>
+  );
+}
+
+const MODULE_META: Record<ApprovalModuleId, { label: string; icon: string; color: string; bg: string }> = {
+  musik: { label: "Musik Terapi", icon: "musical-notes", color: "#8B7EC4", bg: "#EEE9F9" },
+  afirmasi: { label: "Afirmasi", icon: "mic", color: "#6BAF8F", bg: "#E8F5EE" },
+};
+
+function ModuleApprovalCard({
+  session,
+  moduleId,
+  sessionDefs,
+  onApprove,
+}: {
+  session: SessionRecord;
+  moduleId: ApprovalModuleId;
+  sessionDefs: { day: number; title: string }[];
+  onApprove: (day: number, moduleId: ApprovalModuleId, status: "disetujui" | "ditolak", note: string) => Promise<{ success: boolean; error?: string }>;
+}) {
+  const [rejectMode, setRejectMode] = useState(false);
+  const [note, setNote] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const meta = MODULE_META[moduleId];
+  const def = sessionDefs.find((s) => s.day === session.day);
+
+  const handleDecision = async (status: "disetujui" | "ditolak", decisionNote: string) => {
+    if (busy) return;
+    if (status === "ditolak" && !decisionNote.trim()) {
+      Alert.alert("Catatan Dibutuhkan", "Mohon isi catatan untuk pasien.");
+      return;
+    }
+    setBusy(true);
+    const res = await onApprove(session.day, moduleId, status, decisionNote);
+    setBusy(false);
+    if (res.success) setSubmitted(true);
+    else Alert.alert("Gagal Memproses", res.error ?? "Terjadi kesalahan");
+  };
+
+  if (submitted) {
+    return (
+      <View style={{ backgroundColor: "#E8F5EE", borderRadius: 14, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#B0DDB8" }}>
+        <Ionicons name="checkmark-circle" size={18} color="#6BAF8F" />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#3A7A5A" }}>
+          Hari {session.day} · {meta.label} diproses ✓
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ borderRadius: 14, borderWidth: 1.5, borderColor: "#F0D090", backgroundColor: "white", overflow: "hidden" }}>
+      <View style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#FFFBF0" }}>
+        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: meta.bg, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name={meta.icon as any} size={16} color={meta.color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#2D2D3E" }}>
+            H{session.day} · {meta.label}
+          </Text>
+          <Text style={{ fontSize: 11, color: "#9B9BAE" }}>{def?.title ?? ""}</Text>
+        </View>
+      </View>
+
+      <View style={{ padding: 12, gap: 10 }}>
+        {moduleId === "afirmasi" && session.affirmationAudioUrl ? (
+          <AfirmasiAudioPlayer storagePath={session.affirmationAudioUrl} />
+        ) : null}
+        {moduleId === "afirmasi" && !session.affirmationAudioUrl ? (
+          <View style={{ backgroundColor: "#FDECEC", borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="alert-circle" size={14} color="#C9414A" />
+            <Text style={{ fontSize: 11, color: "#8B2E37", flex: 1 }}>Rekaman belum terunggah.</Text>
+          </View>
+        ) : null}
+        {moduleId === "musik" ? (
+          <View style={{ backgroundColor: meta.bg, borderRadius: 10, padding: 10 }}>
+            <Text style={{ fontSize: 11, color: meta.color, lineHeight: 16 }}>
+              Pasien telah menyelesaikan sesi musik terapi relaksasi.
+            </Text>
+          </View>
+        ) : null}
+
+        {!rejectMode ? (
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => handleDecision("disetujui", "")}
+              disabled={busy}
+              style={{ flex: 1, backgroundColor: busy ? "#B5D6C5" : "#6BAF8F", borderRadius: 10, paddingVertical: 10, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle" size={14} color="white" />
+              <Text style={{ color: "white", fontWeight: "700", fontSize: 12 }}>{busy ? "Memproses..." : "Setujui"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setRejectMode(true)}
+              disabled={busy}
+              style={{ flex: 1, backgroundColor: "#FFF0F0", borderRadius: 10, paddingVertical: 10, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: "#F0C8C8" }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle" size={14} color="#C85858" />
+              <Text style={{ color: "#C85858", fontWeight: "700", fontSize: 12 }}>Minta Ulang</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#6B6B80" }}>Catatan untuk pasien:</Text>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder={moduleId === "afirmasi" ? "Contoh: Suara kurang jelas, mohon rekam ulang..." : "Alasan minta ulang..."}
+              placeholderTextColor="#C0B8CC"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              style={{ backgroundColor: "#FEF9F7", borderWidth: 2, borderColor: "#F0C8C8", borderRadius: 10, padding: 10, fontSize: 12, color: "#2D2D3E", minHeight: 70 }}
+            />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => { setRejectMode(false); setNote(""); }}
+                style={{ flex: 1, backgroundColor: "#F5F0F8", borderRadius: 10, paddingVertical: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: "#6B6B80", fontWeight: "600", fontSize: 12 }}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDecision("ditolak", note)}
+                disabled={busy}
+                style={{ flex: 1, backgroundColor: busy ? "#F0A8A8" : "#E85858", borderRadius: 10, paddingVertical: 10, alignItems: "center" }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 12 }}>
+                  {busy ? "Memproses..." : "Kirim"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -414,7 +553,7 @@ export default function NursePatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { getPatientById, getPatientSessions, approveSession, getProgramSessions, getQuestionnaireBundle, getQuestionnaireQuestions } = useApp();
+  const { getPatientById, getPatientSessions, approveSession, approveModule, getProgramSessions, getQuestionnaireBundle, getQuestionnaireQuestions } = useApp();
   const sessions = getProgramSessions();
   const questionnaireQuestions = getQuestionnaireQuestions();
 
@@ -435,6 +574,15 @@ export default function NursePatientDetail() {
 
   const completed = allSessions.filter((s) => s.status === "selesai");
   const pendingSessions = allSessions.filter((s) => s.approvalStatus === "menunggu");
+
+  const pendingModules: { session: SessionRecord; moduleId: ApprovalModuleId }[] = [];
+  allSessions.forEach((s) => {
+    (["musik", "afirmasi"] as ApprovalModuleId[]).forEach((m) => {
+      if (s.moduleApprovals?.[m]?.status === "menunggu") {
+        pendingModules.push({ session: s, moduleId: m });
+      }
+    });
+  });
   const adherence = Math.round((completed.length / 15) * 100);
   const totalDur = completed.reduce((a, s) => a + (s.durationMinutes ?? 0), 0);
   const avgMood = completed.length > 0 ? (completed.reduce((a, s) => a + (s.mood ?? 3), 0) / completed.length) : null;
@@ -483,13 +631,36 @@ export default function NursePatientDetail() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 20 }}>
-          {/* Pending approvals */}
+          {/* Pending module approvals (per-modul: Musik & Afirmasi) */}
+          {pendingModules.length > 0 && (
+            <View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Ionicons name="hourglass" size={18} color="#C49A40" />
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E" }}>
+                  Persetujuan Modul ({pendingModules.length})
+                </Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                {pendingModules.map(({ session, moduleId }) => (
+                  <ModuleApprovalCard
+                    key={`${session.day}-${moduleId}`}
+                    session={session}
+                    moduleId={moduleId}
+                    sessionDefs={sessions}
+                    onApprove={(day, mId, status, note) => approveModule(patient.id, day, mId, status, note)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Pending session approvals (setelah semua modul + refleksi selesai) */}
           {pendingSessions.length > 0 && (
             <View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                 <Ionicons name="time" size={18} color="#C49A40" />
                 <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E" }}>
-                  Menunggu Persetujuan ({pendingSessions.length})
+                  Menunggu Persetujuan Sesi ({pendingSessions.length})
                 </Text>
               </View>
               <View style={{ gap: 10 }}>

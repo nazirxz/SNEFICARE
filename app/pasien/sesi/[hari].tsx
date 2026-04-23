@@ -489,6 +489,151 @@ function AfirmasiRecorder({
   );
 }
 
+function ModuleApprovalGate({
+  status,
+  note,
+  color,
+  submitting,
+  refreshing,
+  onSubmit,
+  onRefresh,
+  onNext,
+  submitLabel,
+  resubmitLabel,
+  nextLabel,
+  requireLocalAudio,
+}: {
+  status: "menunggu" | "disetujui" | "ditolak" | undefined;
+  note?: string;
+  color: string;
+  submitting: boolean;
+  refreshing: boolean;
+  onSubmit: () => void;
+  onRefresh: () => void;
+  onNext: () => void;
+  submitLabel: string;
+  resubmitLabel: string;
+  nextLabel: string;
+  requireLocalAudio?: boolean;
+}) {
+  if (status === "disetujui") {
+    return (
+      <View style={{ gap: 10 }}>
+        <View style={{ backgroundColor: "#E8F5EE", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="checkmark-circle" size={20} color="#6BAF8F" />
+          <Text style={{ flex: 1, fontSize: 13, color: "#4A8F6A", fontWeight: "700" }}>
+            Modul disetujui perawat ✨
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={onNext}
+          style={{ backgroundColor: color, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>{nextLabel}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (status === "menunggu") {
+    return (
+      <View style={{ gap: 10 }}>
+        <View style={{ backgroundColor: "#FFF3D0", borderRadius: 12, padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+          <Ionicons name="time" size={20} color="#C49A40" style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, fontSize: 13, color: "#8A6A20", lineHeight: 20 }}>
+            Menunggu persetujuan perawat. Kamu akan dapat melanjutkan setelah perawat menyetujui.
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={onRefresh}
+          disabled={refreshing}
+          style={{ borderRadius: 12, paddingVertical: 12, alignItems: "center", borderWidth: 2, borderColor: color, flexDirection: "row", justifyContent: "center", gap: 8 }}
+          activeOpacity={0.8}
+        >
+          {refreshing ? <ActivityIndicator color={color} /> : <Ionicons name="refresh" size={16} color={color} />}
+          <Text style={{ color, fontWeight: "700", fontSize: 13 }}>
+            {refreshing ? "Memeriksa..." : "Periksa Status"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (status === "ditolak") {
+    return (
+      <View style={{ gap: 10 }}>
+        <View style={{ backgroundColor: "#FDECEC", borderRadius: 12, padding: 14, gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="alert-circle" size={20} color="#C9414A" />
+            <Text style={{ fontSize: 13, color: "#8B2E37", fontWeight: "700" }}>Perawat meminta perbaikan</Text>
+          </View>
+          {note ? (
+            <Text style={{ fontSize: 12, color: "#8B2E37", lineHeight: 18 }}>"{note}"</Text>
+          ) : (
+            <Text style={{ fontSize: 12, color: "#8B2E37", lineHeight: 18 }}>
+              Silakan ulangi modul ini lalu kirim kembali.
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          onPress={onSubmit}
+          disabled={submitting || requireLocalAudio}
+          style={{
+            backgroundColor: submitting || requireLocalAudio ? "#C9C4D8" : color,
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 8,
+          }}
+          activeOpacity={0.8}
+        >
+          {submitting && <ActivityIndicator color="white" />}
+          <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
+            {submitting ? "Mengirim..." : resubmitLabel}
+          </Text>
+        </TouchableOpacity>
+        {requireLocalAudio && (
+          <Text style={{ fontSize: 11, color: "#9B9BAE", textAlign: "center", fontStyle: "italic" }}>
+            Rekam ulang suara afirmasi di atas terlebih dahulu.
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      <TouchableOpacity
+        onPress={onSubmit}
+        disabled={submitting || requireLocalAudio}
+        style={{
+          backgroundColor: submitting || requireLocalAudio ? "#C9C4D8" : color,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "center",
+          gap: 8,
+        }}
+        activeOpacity={0.8}
+      >
+        {submitting && <ActivityIndicator color="white" />}
+        <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
+          {submitting ? "Mengirim..." : submitLabel}
+        </Text>
+      </TouchableOpacity>
+      {requireLocalAudio && (
+        <Text style={{ fontSize: 11, color: "#9B9BAE", textAlign: "center", fontStyle: "italic" }}>
+          Rekam suara afirmasi di atas terlebih dahulu.
+        </Text>
+      )}
+    </View>
+  );
+}
+
 export default function PatientSession() {
   const { hari } = useLocalSearchParams<{ hari: string }>();
   const router = useRouter();
@@ -497,7 +642,8 @@ export default function PatientSession() {
     currentUser,
     getPatientSessions,
     completeSession,
-    getEffectiveCurrentDay,
+    submitModule,
+    refreshSessions,
     getProgramSessions,
     getRelaxationTracks,
     uploadAfirmasiRecording,
@@ -508,19 +654,39 @@ export default function PatientSession() {
   const day = parseInt(hari ?? "1");
   const sessionDef = sessions.find((s) => s.day === day);
   const allSessions = getPatientSessions(patient?.id ?? "");
-  const todayDay = getEffectiveCurrentDay(patient?.id ?? "");
   const existingRecord = allSessions.find((s) => s.day === day);
 
-  const [activeModule, setActiveModule] = useState(0);
-  const [completedModules, setCompletedModules] = useState<Set<number>>(new Set());
+  const modules = day === 1 ? MODULES_ALL : MODULES_ALL.slice(1);
+
+  const musikApproval = existingRecord?.moduleApprovals?.musik;
+  const afirmasiApproval = existingRecord?.moduleApprovals?.afirmasi;
+  const musikStatus = musikApproval?.status;
+  const afirmasiStatus = afirmasiApproval?.status;
+
+  const canPassMusik = musikStatus === "disetujui";
+  const canPassAfirmasi = afirmasiStatus === "disetujui";
+
+  const initialActiveIndex = (() => {
+    for (let i = 0; i < modules.length; i++) {
+      const m = modules[i];
+      if (m.id === "musik" && !canPassMusik) return i;
+      if (m.id === "afirmasi" && !canPassAfirmasi) return i;
+    }
+    const refIdx = modules.findIndex((m) => m.id === "refleksi");
+    return refIdx >= 0 ? refIdx : modules.length - 1;
+  })();
+
+  const [activeModule, setActiveModule] = useState(initialActiveIndex);
+  const [edukasiRead, setEdukasiRead] = useState(false);
+  const [musikListened, setMusikListened] = useState(false);
   const [mood, setMood] = useState<number | null>(null);
   const [reflection, setReflection] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingModule, setSubmittingModule] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [startTime] = useState(Date.now());
   const [afirmasiUri, setAfirmasiUri] = useState<string | null>(null);
-
-  const modules = day === 1 ? MODULES_ALL : MODULES_ALL.slice(1);
 
   if (!sessionDef) {
     return (
@@ -530,41 +696,84 @@ export default function PatientSession() {
     );
   }
 
-  const handleCompleteModule = () => {
-    const mod = modules[activeModule];
-    if (mod?.id === "afirmasi" && !afirmasiUri) {
-      Alert.alert("Rekaman Belum Ada", "Mohon rekam suara afirmasimu terlebih dahulu sebelum melanjutkan.");
+  const isModuleDone = (idx: number): boolean => {
+    const m = modules[idx];
+    if (!m) return false;
+    if (m.id === "edukasi") return edukasiRead;
+    if (m.id === "musik") return canPassMusik;
+    if (m.id === "afirmasi") return canPassAfirmasi;
+    return false;
+  };
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await refreshSessions();
+    setRefreshing(false);
+  };
+
+  const handleEdukasiDone = () => {
+    setEdukasiRead(true);
+    const nextIdx = modules.findIndex((m) => m.id === "musik");
+    if (nextIdx >= 0) setActiveModule(nextIdx);
+  };
+
+  const handleSubmitMusik = async () => {
+    if (submittingModule) return;
+    setSubmittingModule("musik");
+    const res = await submitModule(patient.id, day, {
+      moduleId: "musik",
+      durationMinutes: Math.max(1, Math.round((Date.now() - startTime) / 60000)),
+    });
+    setSubmittingModule(null);
+    if (!res.success) {
+      Alert.alert("Gagal Mengirim", res.error ?? "Tidak dapat mengirim modul musik.");
       return;
-    }
-    const next = new Set(completedModules);
-    next.add(activeModule);
-    setCompletedModules(next);
-    if (activeModule < modules.length - 1) {
-      setActiveModule(activeModule + 1);
     }
   };
 
+  const handleSubmitAfirmasi = async () => {
+    if (submittingModule) return;
+    if (!afirmasiUri) {
+      Alert.alert("Rekaman Belum Ada", "Mohon rekam suara afirmasimu terlebih dahulu.");
+      return;
+    }
+    setSubmittingModule("afirmasi");
+    const uploadRes = await uploadAfirmasiRecording(patient.id, day, afirmasiUri);
+    if (!uploadRes.success) {
+      setSubmittingModule(null);
+      Alert.alert(
+        "Gagal Mengunggah",
+        `Rekaman tidak terunggah.\n\nDetail: ${uploadRes.error ?? "tidak diketahui"}`,
+      );
+      return;
+    }
+    const res = await submitModule(patient.id, day, {
+      moduleId: "afirmasi",
+      affirmationAudioPath: uploadRes.path,
+    });
+    setSubmittingModule(null);
+    if (!res.success) {
+      Alert.alert("Gagal Mengirim", res.error ?? "Tidak dapat mengirim modul afirmasi.");
+      return;
+    }
+    setAfirmasiUri(null);
+  };
+
   const handleSubmit = async () => {
+    if (!canPassMusik || !canPassAfirmasi) {
+      Alert.alert(
+        "Belum Lengkap",
+        "Modul Musik dan Afirmasi harus disetujui perawat terlebih dahulu.",
+      );
+      return;
+    }
     if (!mood) {
       Alert.alert("Pilih Mood", "Silakan pilih mood kamu hari ini.");
       return;
     }
     if (submitting) return;
     setSubmitting(true);
-
-    let audioPath: string | undefined;
-    if (afirmasiUri) {
-      const uploadRes = await uploadAfirmasiRecording(patient.id, day, afirmasiUri);
-      if (!uploadRes.success) {
-        setSubmitting(false);
-        Alert.alert(
-          "Gagal Mengunggah Rekaman",
-          `Rekaman afirmasi gagal terunggah. Coba lagi.\n\nDetail: ${uploadRes.error ?? "tidak diketahui"}`,
-        );
-        return;
-      }
-      audioPath = uploadRes.path;
-    }
 
     const durationMinutes = Math.max(1, Math.round((Date.now() - startTime) / 60000));
     const result = await completeSession(patient.id, {
@@ -574,7 +783,6 @@ export default function PatientSession() {
       durationMinutes,
       mood,
       refleksiAnswers: reflection ? { q1: reflection } : undefined,
-      affirmationAudioUrl: audioPath,
     });
     setSubmitting(false);
     if (!result.success) {
@@ -587,7 +795,10 @@ export default function PatientSession() {
     setSubmitted(true);
   };
 
-  if (submitted || existingRecord?.status === "selesai") {
+  const sessionLocked =
+    existingRecord?.status === "selesai" && existingRecord.approvalStatus !== "ditolak";
+
+  if (submitted || sessionLocked) {
     return (
       <View style={{ flex: 1, backgroundColor: "#FEF9F7", alignItems: "center", justifyContent: "center", padding: 32 }}>
         <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#E8F5EE", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
@@ -609,7 +820,7 @@ export default function PatientSession() {
   }
 
   const currentMod = modules[activeModule];
-  const allModulesCompleted = completedModules.size === modules.length;
+  const allModulesCompleted = canPassMusik && canPassAfirmasi;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#FEF9F7" }}>
@@ -634,8 +845,16 @@ export default function PatientSession() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {modules.map((mod, i) => {
-              const isDone = completedModules.has(i);
               const isActive = activeModule === i;
+              const isDone = isModuleDone(i);
+              const status =
+                mod.id === "musik" ? musikStatus :
+                mod.id === "afirmasi" ? afirmasiStatus : undefined;
+              const iconName =
+                isDone ? "checkmark-circle" :
+                status === "menunggu" ? "time" :
+                status === "ditolak" ? "alert-circle" :
+                (mod.icon as any);
               return (
                 <TouchableOpacity
                   key={mod.id}
@@ -651,7 +870,7 @@ export default function PatientSession() {
                   }}
                 >
                   <Ionicons
-                    name={isDone ? "checkmark-circle" : (mod.icon as any)}
+                    name={iconName}
                     size={16}
                     color={isActive ? sessionDef.colorFrom : "white"}
                   />
@@ -749,22 +968,71 @@ export default function PatientSession() {
             </View>
           )}
 
-          {!completedModules.has(activeModule) && (
-            <TouchableOpacity
-              onPress={handleCompleteModule}
-              style={{ backgroundColor: currentMod.color, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
-                {activeModule < modules.length - 1 ? "Lanjut ke Modul Berikutnya →" : "Selesaikan Modul Ini ✓"}
-              </Text>
-            </TouchableOpacity>
+          {currentMod.id === "edukasi" && (
+            edukasiRead ? (
+              <View style={{ backgroundColor: "#E8F5EE", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="checkmark-circle" size={18} color="#6BAF8F" />
+                <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600" }}>Modul selesai ✨</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleEdukasiDone}
+                style={{ backgroundColor: currentMod.color, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>Lanjut ke Musik →</Text>
+              </TouchableOpacity>
+            )
           )}
-          {completedModules.has(activeModule) && (
-            <View style={{ backgroundColor: "#E8F5EE", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="checkmark-circle" size={18} color="#6BAF8F" />
-              <Text style={{ fontSize: 13, color: "#4A8F6A", fontWeight: "600" }}>Modul selesai ✨</Text>
-            </View>
+
+          {currentMod.id === "musik" && (
+            <ModuleApprovalGate
+              status={musikStatus}
+              note={musikApproval?.note}
+              color={currentMod.color}
+              submitting={submittingModule === "musik"}
+              refreshing={refreshing}
+              onSubmit={handleSubmitMusik}
+              onRefresh={handleRefresh}
+              onNext={() => {
+                const nextIdx = modules.findIndex((m) => m.id === "afirmasi");
+                if (nextIdx >= 0) setActiveModule(nextIdx);
+              }}
+              submitLabel="Kirim Musik untuk Persetujuan"
+              resubmitLabel="Kirim Ulang Musik"
+              nextLabel="Lanjut ke Afirmasi →"
+            />
+          )}
+
+          {currentMod.id === "afirmasi" && (
+            <ModuleApprovalGate
+              status={afirmasiStatus}
+              note={afirmasiApproval?.note}
+              color={currentMod.color}
+              submitting={submittingModule === "afirmasi"}
+              refreshing={refreshing}
+              onSubmit={handleSubmitAfirmasi}
+              onRefresh={handleRefresh}
+              onNext={() => {
+                const nextIdx = modules.findIndex((m) => m.id === "refleksi");
+                if (nextIdx >= 0) setActiveModule(nextIdx);
+              }}
+              submitLabel="Kirim Rekaman untuk Persetujuan"
+              resubmitLabel="Kirim Ulang Rekaman"
+              nextLabel="Lanjut ke Refleksi →"
+              requireLocalAudio={!afirmasiUri && (afirmasiStatus === undefined || afirmasiStatus === "ditolak")}
+            />
+          )}
+
+          {currentMod.id === "refleksi" && (
+            !allModulesCompleted ? (
+              <View style={{ backgroundColor: "#FFF3D0", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                <Ionicons name="lock-closed" size={18} color="#C49A40" style={{ marginTop: 2 }} />
+                <Text style={{ flex: 1, fontSize: 13, color: "#8A6A20", lineHeight: 20 }}>
+                  Refleksi akan terbuka setelah modul Musik dan Afirmasi disetujui perawat.
+                </Text>
+              </View>
+            ) : null
           )}
         </View>
 
