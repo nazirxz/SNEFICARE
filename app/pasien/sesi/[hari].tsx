@@ -850,15 +850,34 @@ export default function PatientSession() {
               const status =
                 mod.id === "musik" ? musikStatus :
                 mod.id === "afirmasi" ? afirmasiStatus : undefined;
+
+              let lockReason: string | null = null;
+              if (mod.id === "musik" && modules.some((m) => m.id === "edukasi") && !edukasiRead) {
+                lockReason = "Selesaikan modul Edukasi dulu.";
+              } else if (mod.id === "afirmasi" && !canPassMusik) {
+                lockReason = "Modul Musik harus disetujui perawat dulu.";
+              } else if (mod.id === "refleksi" && !(canPassMusik && canPassAfirmasi)) {
+                lockReason = "Modul Musik & Afirmasi harus disetujui perawat dulu.";
+              }
+              const isLocked = lockReason !== null && !isActive;
+
               const iconName =
+                isLocked ? "lock-closed" :
                 isDone ? "checkmark-circle" :
                 status === "menunggu" ? "time" :
                 status === "ditolak" ? "alert-circle" :
                 (mod.icon as any);
+
               return (
                 <TouchableOpacity
                   key={mod.id}
-                  onPress={() => setActiveModule(i)}
+                  onPress={() => {
+                    if (isLocked && lockReason) {
+                      Alert.alert("Modul Terkunci", lockReason);
+                      return;
+                    }
+                    setActiveModule(i);
+                  }}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -866,7 +885,8 @@ export default function PatientSession() {
                     paddingHorizontal: 14,
                     paddingVertical: 8,
                     borderRadius: 20,
-                    backgroundColor: isActive ? "white" : "rgba(255,255,255,0.2)",
+                    backgroundColor: isActive ? "white" : isLocked ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.2)",
+                    opacity: isLocked ? 0.5 : 1,
                   }}
                 >
                   <Ionicons

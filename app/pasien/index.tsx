@@ -4,7 +4,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Alert,
+  Linking,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/context/AppContext";
@@ -12,6 +15,34 @@ import type { Patient } from "../../src/types/domain";
 import { PROGRAM_CONTACT } from "../../src/data/programContact";
 import { isProgramInterventionComplete } from "../../src/data/researchQuestionnaire";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+async function handleContactTap() {
+  Alert.alert(
+    "Kontak Pendamping",
+    `${PROGRAM_CONTACT.name}\n${PROGRAM_CONTACT.phoneDisplay}`,
+    [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Salin Nomor",
+        onPress: async () => {
+          await Clipboard.setStringAsync(PROGRAM_CONTACT.phoneTel);
+          Alert.alert("Tersalin", "Nomor telah disalin ke clipboard.");
+        },
+      },
+      {
+        text: "Buka WhatsApp",
+        onPress: async () => {
+          const url = `whatsapp://send?phone=${PROGRAM_CONTACT.phoneWhatsApp}`;
+          const fallback = `https://wa.me/${PROGRAM_CONTACT.phoneWhatsApp}`;
+          const canOpen = await Linking.canOpenURL(url);
+          Linking.openURL(canOpen ? url : fallback).catch(() => {
+            Alert.alert("Tidak Bisa Membuka", "WhatsApp tidak terpasang.");
+          });
+        },
+      },
+    ],
+  );
+}
 
 const motivationalQuotes = [
   "Kamu lebih kuat dari yang kamu kira. 💗",
@@ -383,16 +414,21 @@ export default function PatientDashboard() {
           )}
 
           {/* Program contact */}
-          <View style={{ backgroundColor: "white", borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", gap: 14, borderWidth: 1, borderColor: "#F0E8EE", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+          <TouchableOpacity
+            onPress={handleContactTap}
+            activeOpacity={0.8}
+            style={{ backgroundColor: "white", borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", gap: 14, borderWidth: 1, borderColor: "#F0E8EE", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
+          >
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#F7E8EE", alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="headset" size={20} color="#C96B8A" />
+              <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>Kontak pendamping</Text>
               <Text style={{ fontSize: 12, color: "#6B6B80", marginTop: 2 }}>{PROGRAM_CONTACT.name}</Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#C96B8A", marginTop: 2 }}>{PROGRAM_CONTACT.phoneDisplay}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color="#C0B8D0" />
+          </TouchableOpacity>
 
           <View style={{ height: 16 }} />
         </View>

@@ -5,4 +5,6 @@ export const PROGRAM_CONTACT = {
   phoneTel: "+6282162335412",
   /** Tampilan ramah dibaca */
   phoneDisplay: "+62 821-6233-5412",
+  /** Format WhatsApp (tanpa + dan spasi) */
+  phoneWhatsApp: "6282162335412",
 } as const;
