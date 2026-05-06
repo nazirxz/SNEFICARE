@@ -127,7 +127,7 @@ export default function PatientDashboard() {
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <View>
-              <Text style={{ fontSize: 13, color: "#9B7B8A" }}>{getGreeting()},</Text>
+              <Text style={{ fontSize: 13, color: "#6B5060" }}>{getGreeting()},</Text>
               <Text style={{ fontSize: 22, fontWeight: "800", color: "#2D2D3E" }}>
                 {patient?.name?.split(" ")[0]} 🌸
               </Text>
@@ -146,29 +146,64 @@ export default function PatientDashboard() {
             </View>
           </View>
           <View style={{ backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 16, padding: 12, marginTop: 12 }}>
-            <Text style={{ fontSize: 13, color: "#8B6B8A", fontStyle: "italic" }}>{quote}</Text>
+            <Text style={{ fontSize: 13, color: "#6B4B6A", fontStyle: "italic" }}>{quote}</Text>
           </View>
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 20 }}>
           {/* Pre-test banner */}
           {needsPreTest && (
-            <View style={{ backgroundColor: "#FFF8E8", borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: "#F0D090", gap: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                <Ionicons name="clipboard" size={20} color="#C49A40" style={{ marginTop: 2 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#8A6A20" }}>Kuesioner pra wajib diisi</Text>
-                  <Text style={{ fontSize: 12, color: "#B09040", marginTop: 4, lineHeight: 18 }}>
-                    Sebelum memulai sesi hari pertama, lengkapi kuesioner penelitian (SMSES-BC) terlebih dahulu.
-                  </Text>
+            <View
+              style={{
+                backgroundColor: "#FFF0F5",
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: "#D94444",
+                overflow: "hidden",
+                gap: 0,
+              }}
+            >
+              {/* Top accent stripe */}
+              <View style={{ backgroundColor: "#D94444", paddingHorizontal: 16, paddingVertical: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="alert-circle" size={16} color="white" />
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: "white", letterSpacing: 0.5 }}>WAJIB DIISI SEBELUM MEMULAI</Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push("/pasien/kuesioner/pre" as any)}
-                style={{ backgroundColor: "#C49A40", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
-              >
-                <Text style={{ color: "white", fontWeight: "700" }}>Isi kuesioner pra →</Text>
-              </TouchableOpacity>
+              <View style={{ padding: 16, gap: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#FADADD", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <Ionicons name="clipboard" size={20} color="#D94444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "800", color: "#8A1A1A" }}>Kuesioner Pra Program</Text>
+                    <Text style={{ fontSize: 12, color: "#6B3030", marginTop: 4, lineHeight: 18 }}>
+                      Sebelum memulai sesi hari pertama, kamu harus mengisi kuesioner penelitian (SMSES-BC) terlebih dahulu.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push("/pasien/kuesioner/pre" as any)}
+                  style={{
+                    backgroundColor: "#D94444",
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: 8,
+                    shadowColor: "#D94444",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="pencil" size={16} color="white" />
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 14 }}>Isi Kuesioner Sekarang →</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -203,8 +238,8 @@ export default function PatientDashboard() {
               <View style={{ height: 10, backgroundColor: "#E8789A", borderRadius: 10, width: `${progressPct}%` as any }} />
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 11, color: "#9B9BAE" }}>{completedCount} dari 15 sesi selesai</Text>
-              <Text style={{ fontSize: 11, color: "#9B9BAE" }}>Hari ke-{todayDay}</Text>
+              <Text style={{ fontSize: 11, color: "#6B6B80" }}>{completedCount} dari 15 sesi selesai</Text>
+              <Text style={{ fontSize: 11, color: "#6B6B80" }}>Hari ke-{todayDay}</Text>
             </View>
 
             {/* Day dots */}
@@ -230,7 +265,7 @@ export default function PatientDashboard() {
                     {state === "pending" && <Ionicons name="time" size={10} color="white" />}
                     {state === "rejected" && <Text style={{ fontSize: 8, color: "white", fontWeight: "700" }}>✗</Text>}
                     {(state === "current" || state === "missed" || state === "locked") && (
-                      <Text style={{ fontSize: 9, color: state === "current" ? "#C96B8A" : "#C0B8D0", fontWeight: "700" }}>{d}</Text>
+                      <Text style={{ fontSize: 9, color: state === "current" ? "#C96B8A" : "#8B88A0", fontWeight: "700" }}>{d}</Text>
                     )}
                   </View>
                 );
@@ -246,7 +281,7 @@ export default function PatientDashboard() {
               ].map(({ color, label }) => (
                 <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-                  <Text style={{ fontSize: 10, color: "#9B9BAE" }}>{label}</Text>
+                  <Text style={{ fontSize: 11, color: "#6B6B80" }}>{label}</Text>
                 </View>
               ))}
             </View>
@@ -382,7 +417,7 @@ export default function PatientDashboard() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>Hari {s.day}: {s.title}</Text>
-                    <Text style={{ fontSize: 11, color: "#9B9BAE", marginTop: 2 }}>{s.theme}</Text>
+                    <Text style={{ fontSize: 11, color: "#6B6B80", marginTop: 2 }}>{s.theme}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#D0C8E0" />
                 </View>
@@ -402,7 +437,7 @@ export default function PatientDashboard() {
                       <Ionicons name="checkmark-circle" size={20} color="#6BAF8F" />
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 13, fontWeight: "600", color: "#2D2D3E" }}>Hari {s.day}: {def?.title}</Text>
-                        <Text style={{ fontSize: 11, color: "#9B9BAE", marginTop: 2 }}>
+                        <Text style={{ fontSize: 11, color: "#6B6B80", marginTop: 2 }}>
                           {s.mood ? ["😢", "😟", "😐", "🙂", "😊"][s.mood - 1] : ""} Durasi: {s.durationMinutes} menit
                         </Text>
                       </View>

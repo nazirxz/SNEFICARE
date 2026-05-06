@@ -593,43 +593,71 @@ export default function NursePatientDetail() {
   return (
     <View style={{ flex: 1, backgroundColor: "#FEF9F7" }}>
       <StatusBar barStyle="dark-content" backgroundColor="#EEE9F9" />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 24, backgroundColor: "#EEE9F9" }}>
+
+      {/* ── STICKY HEADER (always visible) ──────────────────────────────── */}
+      <View
+        style={{
+          paddingTop: insets.top + 8,
+          paddingHorizontal: 20,
+          paddingBottom: 16,
+          backgroundColor: "#EEE9F9",
+        }}
+      >
+        {/* Back button row */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <TouchableOpacity
             onPress={() => router.back()}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.6)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(255,255,255,0.8)",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#8B7EC4",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 3,
+            }}
           >
-            <Ionicons name="chevron-back" size={20} color="#6B6B80" />
+            <Ionicons name="chevron-back" size={22} color="#6B6B80" />
           </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#2D2D3E", flex: 1 }} numberOfLines={1}>
+            {patient.name}
+          </Text>
+        </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "#DDD5F8", alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: "#8B7EC4" }}>{patient.name[0]}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: "#2D2D3E" }}>{patient.name}</Text>
-              <Text style={{ fontSize: 13, color: "#8B7EC4", marginTop: 2 }}>{patient.chemoCycle}</Text>
-              {patient.diagnosis && <Text style={{ fontSize: 12, color: "#9B9BAE" }}>{patient.diagnosis}</Text>}
-            </View>
+        {/* Patient info */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "#DDD5F8", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: "#8B7EC4" }}>{patient.name[0]}</Text>
           </View>
-
-          {/* Quick stats */}
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-            {[
-              { label: "Sesi", value: `${completed.length}/15`, color: "#6BAF8F" },
-              { label: "Kepatuhan", value: `${adherence}%`, color: adherenceColor },
-              { label: "Total Waktu", value: `${totalDur}m`, color: "#8B7EC4" },
-              { label: "Mood Rata", value: avgMood ? MOODS[Math.round(avgMood) - 1] : "—", color: "#C49A40" },
-            ].map(({ label, value, color }) => (
-              <View key={label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 10, alignItems: "center" }}>
-                <Text style={{ fontSize: 16, fontWeight: "800", color }}>{value}</Text>
-                <Text style={{ fontSize: 10, color: "#9B9BAE", marginTop: 2, textAlign: "center" }}>{label}</Text>
-              </View>
-            ))}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: "#2D2D3E" }}>{patient.name}</Text>
+            <Text style={{ fontSize: 13, color: "#8B7EC4", marginTop: 2 }}>{patient.chemoCycle}</Text>
+            {patient.diagnosis && <Text style={{ fontSize: 12, color: "#6B6B80" }}>{patient.diagnosis}</Text>}
           </View>
         </View>
 
+        {/* Quick stats */}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+          {[
+            { label: "Sesi", value: `${completed.length}/15`, color: "#6BAF8F" },
+            { label: "Kepatuhan", value: `${adherence}%`, color: adherenceColor },
+            { label: "Total Waktu", value: `${totalDur}m`, color: "#8B7EC4" },
+            { label: "Mood Rata", value: avgMood ? MOODS[Math.round(avgMood) - 1] : "—", color: "#C49A40" },
+          ].map(({ label, value, color }) => (
+            <View key={label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 10, alignItems: "center" }}>
+              <Text style={{ fontSize: 16, fontWeight: "800", color }}>{value}</Text>
+              <Text style={{ fontSize: 10, color: "#6B6B80", marginTop: 2, textAlign: "center" }}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* ── SCROLLABLE CONTENT ──────────────────────────────────────────── */}
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 20 }}>
           {/* Pending module approvals (per-modul: Musik & Afirmasi) */}
           {pendingModules.length > 0 && (

@@ -171,7 +171,7 @@ function MusicPlayer({
         </View>
       </ScrollView>
 
-      {/* YouTube iframe — controls disabled, touch overlay blocks seek */}
+      {/* YouTube iframe */}
       <View style={{ borderRadius: 14, overflow: "hidden", backgroundColor: "#0A0A0A", position: "relative" }}>
         {selectedTrack ? (
           <YoutubePlayer
@@ -183,7 +183,11 @@ function MusicPlayer({
             onChangeState={onChangeState}
             onReady={() => setReady(true)}
             onError={onError}
-            webViewProps={{ androidLayerType: "hardware" }}
+            webViewProps={{
+              androidLayerType: "hardware",
+              allowsInlineMediaPlayback: true,
+              mediaPlaybackRequiresUserAction: false,
+            }}
             initialPlayerParams={{
               controls: false,
               modestbranding: true,
@@ -193,11 +197,6 @@ function MusicPlayer({
             }}
           />
         ) : null}
-        <View
-          pointerEvents="box-only"
-          onStartShouldSetResponder={() => true}
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        />
         {!ready && !errorMsg && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
             <ActivityIndicator color="white" />
@@ -1075,15 +1074,25 @@ export default function PatientSession() {
         {allModulesCompleted && (
           <View style={{ backgroundColor: "white", borderRadius: 20, padding: 20, gap: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: "#2D2D3E" }}>Bagaimana perasaanmu hari ini?</Text>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4 }}>
               {MOODS.map((m) => (
                 <TouchableOpacity
                   key={m.value}
                   onPress={() => setMood(m.value)}
-                  style={{ alignItems: "center", gap: 6, padding: 8, borderRadius: 12, backgroundColor: mood === m.value ? "#F7E8EE" : "transparent", borderWidth: mood === m.value ? 2 : 0, borderColor: "#C96B8A" }}
+                  style={{
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 10,
+                    borderRadius: 14,
+                    backgroundColor: mood === m.value ? "#F7E8EE" : "#FAF8FF",
+                    borderWidth: mood === m.value ? 2 : 1,
+                    borderColor: mood === m.value ? "#C96B8A" : "#EDE8F5",
+                    flex: 1,
+                    marginHorizontal: 3,
+                  }}
                 >
-                  <Text style={{ fontSize: 28 }}>{m.emoji}</Text>
-                  <Text style={{ fontSize: 9, color: "#9B9BAE", textAlign: "center" }}>{m.label}</Text>
+                  <Text style={{ fontSize: 36 }}>{m.emoji}</Text>
+                  <Text style={{ fontSize: 11, color: mood === m.value ? "#C96B8A" : "#4A4A6A", textAlign: "center", fontWeight: mood === m.value ? "700" : "400" }}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
