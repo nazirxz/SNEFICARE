@@ -127,7 +127,7 @@ export default function PatientDashboard() {
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <View>
-              <Text style={{ fontSize: 13, color: "#6B5060" }}>{getGreeting()},</Text>
+              <Text style={{ fontSize: 14, color: "#4A4A6A" }}>{getGreeting()},</Text>
               <Text style={{ fontSize: 22, fontWeight: "800", color: "#2D2D3E" }}>
                 {patient?.name?.split(" ")[0]} 🌸
               </Text>
@@ -145,8 +145,14 @@ export default function PatientDashboard() {
               <Ionicons name="heart" size={24} color="white" />
             </View>
           </View>
-          <View style={{ backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 16, padding: 12, marginTop: 12 }}>
-            <Text style={{ fontSize: 13, color: "#6B4B6A", fontStyle: "italic" }}>{quote}</Text>
+          {/* Motivational Quote — purely informational, different from buttons */}
+          <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ width: 4, height: 40, backgroundColor: "#E8789A", borderRadius: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: "#6B5060", fontStyle: "italic", lineHeight: 20 }}>
+                "{quote}"
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -172,13 +178,13 @@ export default function PatientDashboard() {
               </View>
               <View style={{ padding: 16, gap: 12 }}>
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#FADADD", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
-                    <Ionicons name="clipboard" size={20} color="#D94444" />
+                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "#FADADD", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <Ionicons name="clipboard" size={22} color="#D94444" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: "#8A1A1A" }}>Kuesioner Pra Program</Text>
-                    <Text style={{ fontSize: 12, color: "#6B3030", marginTop: 4, lineHeight: 18 }}>
-                      Sebelum memulai sesi hari pertama, kamu harus mengisi kuesioner penelitian (SMSES-BC) terlebih dahulu.
+                    <Text style={{ fontSize: 16, fontWeight: "900", color: "#8A1A1A" }}>Kuesioner Pra Program</Text>
+                    <Text style={{ fontSize: 13, color: "#6B3030", marginTop: 4, lineHeight: 18, fontWeight: "500" }}>
+                      Wajib diisi sebelum memulai sesi hari pertama.
                     </Text>
                   </View>
                 </View>
@@ -273,8 +279,8 @@ export default function PatientDashboard() {
               <View style={{ height: 10, backgroundColor: "#E8789A", borderRadius: 10, width: `${progressPct}%` as any }} />
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 11, color: "#6B6B80" }}>{completedCount} dari 15 sesi selesai</Text>
-              <Text style={{ fontSize: 11, color: "#6B6B80" }}>Hari ke-{todayDay}</Text>
+              <Text style={{ fontSize: 12, color: "#4A4A6A" }}>{completedCount} dari 15 sesi selesai</Text>
+              <Text style={{ fontSize: 12, color: "#4A4A6A" }}>Hari ke-{todayDay}</Text>
             </View>
 
             {/* Day dots */}
@@ -316,7 +322,7 @@ export default function PatientDashboard() {
               ].map(({ color, label }) => (
                 <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-                  <Text style={{ fontSize: 11, color: "#6B6B80" }}>{label}</Text>
+                  <Text style={{ fontSize: 12, color: "#4A4A6A" }}>{label}</Text>
                 </View>
               ))}
             </View>
@@ -452,7 +458,7 @@ export default function PatientDashboard() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>Hari {s.day}: {s.title}</Text>
-                    <Text style={{ fontSize: 11, color: "#6B6B80", marginTop: 2 }}>{s.theme}</Text>
+                    <Text style={{ fontSize: 12, color: "#4A4A6A", marginTop: 2 }}>{s.theme}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#D0C8E0" />
                 </View>

@@ -194,6 +194,7 @@ function MusicPlayer({
               rel: false,
               iv_load_policy: 3,
               preventFullScreen: true,
+              mute: false,
             }}
           />
         ) : null}
@@ -235,10 +236,10 @@ function MusicPlayer({
           />
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ fontSize: 11, color: "#9B9BAE" }}>
+          <Text style={{ fontSize: 12, color: "#6B6B80" }}>
             {fmtSec(Math.min(elapsedSec, MAX_PLAY_SEC))} / {fmtSec(MAX_PLAY_SEC)}
           </Text>
-          <Text style={{ fontSize: 10, color: "#9B9BAE", fontStyle: "italic" }}>Batas sesi 30 menit</Text>
+          <Text style={{ fontSize: 11, color: "#6B6B80", fontStyle: "italic" }}>Batas sesi 30 menit</Text>
         </View>
       </View>
 
@@ -394,7 +395,7 @@ function AfirmasiRecorder({
         <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", flex: 1 }}>
           Rekam Suara Afirmasi
         </Text>
-        <Text style={{ fontSize: 11, color: "#9B9BAE" }}>Maks 2 menit</Text>
+        <Text style={{ fontSize: 12, color: "#6B6B80" }}>Maks 2 menit</Text>
       </View>
       <Text style={{ fontSize: 12, color: "#6B6B80", lineHeight: 18 }}>
         Bacakan afirmasi di atas dengan suara yang nyaman. Rekaman akan dikirim ke perawat bersama sesi hari ini.

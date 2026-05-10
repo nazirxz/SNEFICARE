@@ -147,7 +147,7 @@ function ModuleApprovalCard({
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#2D2D3E" }}>
             H{session.day} · {meta.label}
           </Text>
-          <Text style={{ fontSize: 11, color: "#9B9BAE" }}>{def?.title ?? ""}</Text>
+          <Text style={{ fontSize: 12, color: "#6B6B80" }}>{def?.title ?? ""}</Text>
         </View>
       </View>
 
@@ -263,25 +263,25 @@ function QuestionnaireCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>{label}</Text>
-          <Text style={{ fontSize: 11, color: "#9B9BAE", marginTop: 1 }}>Dikirim {submittedDate}</Text>
+          <Text style={{ fontSize: 12, color: "#6B6B80", marginTop: 1 }}>Dikirim {submittedDate}</Text>
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={{ fontSize: 18, fontWeight: "800", color: accent }}>{total}</Text>
-          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Total · {count} item</Text>
+          <Text style={{ fontSize: 11, color: "#6B6B80" }}>Total · {count} item</Text>
         </View>
       </View>
 
       <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", gap: 8 }}>
         <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
-          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Rata-rata</Text>
+          <Text style={{ fontSize: 11, color: "#6B6B80" }}>Rata-rata</Text>
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{avg.toFixed(2)}</Text>
         </View>
         <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
-          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Inisial</Text>
+          <Text style={{ fontSize: 11, color: "#6B6B80" }}>Inisial</Text>
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{submission.demographics.initials || "—"}</Text>
         </View>
         <View style={{ flex: 1, backgroundColor: "#FEF9F7", borderRadius: 10, padding: 10, alignItems: "center" }}>
-          <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Usia</Text>
+          <Text style={{ fontSize: 11, color: "#6B6B80" }}>Usia</Text>
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E", marginTop: 2 }}>{submission.demographics.age || "—"}</Text>
         </View>
       </View>
@@ -460,12 +460,17 @@ function ApprovalCard({ session, sessionDefs, onApprove }: {
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#2D2D3E" }}>{def?.title}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-            <Ionicons name="time" size={12} color="#9B9BAE" />
-            <Text style={{ fontSize: 11, color: "#9B9BAE" }}>
+            <Ionicons name="time" size={12} color="#6B6B80" />
+            <Text style={{ fontSize: 12, color: "#6B6B80" }}>
               {session.durationMinutes} mnt
               {session.completedAt ? ` · ${new Date(session.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : ""}
             </Text>
-            {session.mood ? <Text style={{ fontSize: 14 }}>{MOODS[session.mood - 1]}</Text> : null}
+            {session.mood ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F5F0F8", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                <Text style={{ fontSize: 22 }}>{MOODS[session.mood - 1]}</Text>
+                <Text style={{ fontSize: 10, fontWeight: "600", color: "#6B6B80" }}>{MOOD_LABELS[session.mood - 1]}</Text>
+              </View>
+            ) : null}
             {session.affirmationAudioUrl ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#EEE9F9", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
                 <Ionicons name="mic" size={10} color="#8B7EC4" />
@@ -650,7 +655,10 @@ export default function NursePatientDetail() {
           ].map(({ label, value, color }) => (
             <View key={label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 10, alignItems: "center" }}>
               <Text style={{ fontSize: 16, fontWeight: "800", color }}>{value}</Text>
-              <Text style={{ fontSize: 10, color: "#6B6B80", marginTop: 2, textAlign: "center" }}>{label}</Text>
+              <Text style={{ fontSize: 11, color: "#6B6B80", marginTop: 2, textAlign: "center" }}>{label}</Text>
+              {label === "Mood Rata" && avgMood && (
+                <Text style={{ fontSize: 8, fontWeight: "700", color: "#C49A40", marginTop: 1 }}>{MOOD_LABELS[Math.round(avgMood) - 1]}</Text>
+              )}
             </View>
           ))}
         </View>
@@ -723,7 +731,10 @@ export default function NursePatientDetail() {
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
                 {["😢", "😟", "😐", "🙂", "😊"].map((e, i) => (
-                  <Text key={i} style={{ fontSize: 12 }}>{e}</Text>
+                  <View key={i} style={{ alignItems: "center" }}>
+                    <Text style={{ fontSize: 18 }}>{e}</Text>
+                    <Text style={{ fontSize: 7, color: "#6B6B80", fontWeight: "700" }}>{MOOD_LABELS[i]}</Text>
+                  </View>
                 ))}
               </View>
             </View>
@@ -761,11 +772,19 @@ export default function NursePatientDetail() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: "700", color: "#2D2D3E" }}>Hari {def.day}: {def.title}</Text>
                       {isCompleted && rec ? (
-                        <Text style={{ fontSize: 11, color: "#9B9BAE", marginTop: 1 }}>
-                          {rec.durationMinutes} mnt {rec.mood ? MOODS[rec.mood - 1] : ""} · {rec.completedAt ? new Date(rec.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : ""}
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                          <Text style={{ fontSize: 12, color: "#6B6B80" }}>
+                            {rec.durationMinutes} mnt · {rec.completedAt ? new Date(rec.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : ""}
+                          </Text>
+                          {rec.mood ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#F5F0F8", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 6 }}>
+                              <Text style={{ fontSize: 11 }}>{MOODS[rec.mood - 1]}</Text>
+                              <Text style={{ fontSize: 8, fontWeight: "600", color: "#6B6B80" }}>{MOOD_LABELS[rec.mood - 1]}</Text>
+                            </View>
+                          ) : null}
+                        </View>
                       ) : null}
-                      {rec?.approvalNote ? <Text style={{ fontSize: 11, color: "#E85858", marginTop: 1 }}>📋 {rec.approvalNote}</Text> : null}
+                      {rec?.approvalNote ? <Text style={{ fontSize: 12, color: "#E85858", marginTop: 1 }}>📋 {rec.approvalNote}</Text> : null}
                     </View>
                     <View style={{ backgroundColor: statusBg, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                       <Text style={{ fontSize: 11, fontWeight: "600", color: statusColor }}>{statusText}</Text>
