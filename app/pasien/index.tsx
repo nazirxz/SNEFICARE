@@ -209,22 +209,57 @@ export default function PatientDashboard() {
 
           {/* Post-test banner */}
           {needsPostTest && (
-            <View style={{ backgroundColor: "#E8F5EE", borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: "#B0DDB8", gap: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                <Ionicons name="clipboard" size={20} color="#4A8F6A" style={{ marginTop: 2 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#2A5A3A" }}>Kuesioner pasca program</Text>
-                  <Text style={{ fontSize: 12, color: "#3A7A5A", marginTop: 4, lineHeight: 18 }}>
-                    Selamat, kamu telah menyelesaikan 15 hari! Mohon isi kuesioner pasca (post-test).
-                  </Text>
+            <View
+              style={{
+                backgroundColor: "#FFF0F5",
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: "#D94444",
+                overflow: "hidden",
+                gap: 0,
+              }}
+            >
+              {/* Top accent stripe */}
+              <View style={{ backgroundColor: "#D94444", paddingHorizontal: 16, paddingVertical: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="alert-circle" size={16} color="white" />
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: "white", letterSpacing: 0.5 }}>WAJIB DIISI SETELAH PROGRAM SELESAI</Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push("/pasien/kuesioner/post" as any)}
-                style={{ backgroundColor: "#6BAF8F", borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
-              >
-                <Text style={{ color: "white", fontWeight: "700" }}>Isi kuesioner pasca →</Text>
-              </TouchableOpacity>
+              <View style={{ padding: 16, gap: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#FADADD", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <Ionicons name="clipboard" size={20} color="#D94444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "800", color: "#8A1A1A" }}>Kuesioner Pasca Program</Text>
+                    <Text style={{ fontSize: 12, color: "#6B3030", marginTop: 4, lineHeight: 18 }}>
+                      Selamat menyelesaikan 15 hari! Kamu harus mengisi kuesioner penelitian (SMSES-BC) pasca program sekarang.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push("/pasien/kuesioner/post" as any)}
+                  style={{
+                    backgroundColor: "#D94444",
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: 8,
+                    shadowColor: "#D94444",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="pencil" size={16} color="white" />
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 14 }}>Isi Kuesioner Sekarang →</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -381,7 +416,7 @@ export default function PatientDashboard() {
                       )}
                       <TouchableOpacity
                         onPress={() => router.push(needsPreTest ? "/pasien/kuesioner/pre" : `/pasien/sesi/${todayDay}` as any)}
-                        style={{ backgroundColor: todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                        style={{ backgroundColor: needsPreTest ? "#D94444" : todaySessionDef.colorFrom, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
                         activeOpacity={0.8}
                       >
                         <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>

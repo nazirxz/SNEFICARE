@@ -111,17 +111,6 @@ export default function PatientResearchQuestionnaire() {
   };
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
-  const handleCancelPress = () => {
-    Alert.alert(
-      "Keluar Kuesioner?",
-      "Progres pengisian kuesioner akan hilang jika kamu keluar sekarang.",
-      [
-        { text: "Lanjutkan Isi", style: "cancel" },
-        { text: "Keluar", style: "destructive", onPress: () => router.back() },
-      ],
-    );
-  };
-
   const handleContinueToQuestions = () => {
     if (missingDemoLabels.length > 0) {
       Alert.alert(
@@ -215,7 +204,7 @@ export default function PatientResearchQuestionnaire() {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <TouchableOpacity
-            onPress={step === "questions" && batchIndex > 0 ? handlePrevBatch : step === "questions" ? () => setStep("demo") : handleCancelPress}
+            onPress={step === "questions" && batchIndex > 0 ? handlePrevBatch : step === "questions" ? () => setStep("demo") : () => router.back()}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "white", alignItems: "center", justifyContent: "center" }}
           >
             <Ionicons name="chevron-back" size={20} color="#6B6B80" />
@@ -269,7 +258,7 @@ export default function PatientResearchQuestionnaire() {
       </View>
 
       {/* ── Scrollable Content ─────────────────────────────────────────────── */}
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
         {/* ── STEP: Data Diri ─────────────────────────────────────────────── */}
         {step === "demo" && (
           <View style={{ gap: 14 }}>
@@ -477,13 +466,6 @@ export default function PatientResearchQuestionnaire() {
                   : "Lanjut ke Kuesioner →"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleCancelPress}
-              style={{ borderRadius: 14, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#E0D8E8" }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: "#6B6B80", fontWeight: "600", fontSize: 14 }}>Batal / Keluar</Text>
-            </TouchableOpacity>
           </>
         )}
 
@@ -534,23 +516,14 @@ export default function PatientResearchQuestionnaire() {
                 {batchMissingCount === 0 && <Ionicons name="arrow-forward" size={16} color="white" />}
               </TouchableOpacity>
             )}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                onPress={handlePrevBatch}
-                style={{ flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#E0D8E8", flexDirection: "row", justifyContent: "center", gap: 6 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="arrow-back" size={14} color="#6B6B80" />
-                <Text style={{ color: "#6B6B80", fontWeight: "600", fontSize: 14 }}>Kembali</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleCancelPress}
-                style={{ flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#E0D8E8" }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: "#6B6B80", fontWeight: "600", fontSize: 14 }}>Batal / Keluar</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={handlePrevBatch}
+              style={{ borderRadius: 14, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#E0D8E8", flexDirection: "row", justifyContent: "center", gap: 6 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={14} color="#6B6B80" />
+              <Text style={{ color: "#6B6B80", fontWeight: "600", fontSize: 14 }}>Kembali</Text>
+            </TouchableOpacity>
           </>
         )}
       </View>

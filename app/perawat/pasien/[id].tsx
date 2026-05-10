@@ -776,9 +776,33 @@ export default function NursePatientDetail() {
             </View>
           </View>
 
-          <View style={{ height: 32 }} />
+          <View style={{ height: 80 }} />
         </View>
       </ScrollView>
+
+      {/* ── FLOATING BACK BUTTON — selalu tampil di kiri bawah saat scroll panjang */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={{
+          position: "absolute",
+          bottom: insets.bottom + 20,
+          left: 20,
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: "#8B7EC4",
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#8B7EC4",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 10,
+          elevation: 8,
+        }}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="arrow-back" size={22} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
