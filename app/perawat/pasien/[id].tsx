@@ -228,7 +228,7 @@ function ModuleApprovalCard({
   );
 }
 
-const SCORE_LABELS = ["—", "Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
+const SCORE_LABELS = ["—", "Tidak sepenuhnya percaya diri", "2", "3", "4", "5", "6", "7", "8", "9", "Sepenuhnya percaya diri"];
 
 function scoreStats(s: QuestionnaireSubmission) {
   const scores = s.scores ?? [];

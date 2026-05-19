@@ -15,13 +15,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SCORE_OPTIONS = [
-  { value: 1, label: "Sangat Tidak Setuju" },
-  { value: 2, label: "Tidak Setuju" },
-  { value: 3, label: "Netral" },
-  { value: 4, label: "Setuju" },
-  { value: 5, label: "Sangat Setuju" },
-];
+const SCORE_OPTIONS = Array.from({ length: 10 }, (_, i) => ({
+  value: i + 1,
+  label: i === 0 ? "Tidak sepenuhnya percaya diri" : i === 9 ? "Sepenuhnya percaya diri" : `${i + 1}`,
+}));
 
 const QUESTIONS_PER_BATCH = 5;
 
@@ -357,41 +354,33 @@ export default function PatientResearchQuestionnaire() {
                     </View>
                     <Text style={{ flex: 1, fontSize: 13, color: "#2D2D3E", lineHeight: 20 }}>{q}</Text>
                   </View>
-                  <View style={{ gap: 6 }}>
-                    {SCORE_OPTIONS.map(({ value, label }) => (
-                      <TouchableOpacity
-                        key={value}
-                        onPress={() => setScore(absoluteIdx, value)}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: 10,
-                          borderRadius: 10,
-                          backgroundColor: scores[absoluteIdx] === value ? "#FFF8E8" : "#F8F5FF",
-                          borderWidth: scores[absoluteIdx] === value ? 2 : 1,
-                          borderColor: scores[absoluteIdx] === value ? "#C49A40" : "#F0EAF5",
-                        }}
-                      >
-                        <View
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 2 }}>
+                      <Text style={{ fontSize: 10, color: "#9B9BAE" }}>Tidak sepenuhnya{"\n"}percaya diri</Text>
+                      <Text style={{ fontSize: 10, color: "#9B9BAE", textAlign: "right" }}>Sepenuhnya{"\n"}percaya diri</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 4 }}>
+                      {SCORE_OPTIONS.map(({ value }) => (
+                        <TouchableOpacity
+                          key={value}
+                          onPress={() => setScore(absoluteIdx, value)}
                           style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
                             borderWidth: 2,
-                            borderColor: scores[absoluteIdx] === value ? "#C49A40" : "#B0A8C0",
+                            borderColor: scores[absoluteIdx] === value ? "#C49A40" : "#E0D8E8",
                             backgroundColor: scores[absoluteIdx] === value ? "#C49A40" : "white",
                             alignItems: "center",
                             justifyContent: "center",
                           }}
                         >
-                          {scores[absoluteIdx] === value && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "white" }} />}
-                        </View>
-                        <Text style={{ fontSize: 12, color: scores[absoluteIdx] === value ? "#5A4A20" : "#4A4A6A", fontWeight: scores[absoluteIdx] === value ? "700" : "400" }}>
-                          {value}. {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: scores[absoluteIdx] === value ? "white" : "#4A4A6A" }}>
+                            {value}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                 </View>
               );
